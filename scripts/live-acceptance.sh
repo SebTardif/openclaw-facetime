@@ -199,11 +199,18 @@ require_yes "Did Lobster stop speaking promptly when interrupted?"
 
 echo
 echo "The script can now hang up through OpenClaw."
-require_yes "Hang up the active FaceTime call now?"
-
-echo
-echo "== Hangup =="
-gateway_call facetime.hangup
+read -r -p "Hang up the active FaceTime call through OpenClaw? [Y/n] " hangup_answer
+case "$hangup_answer" in
+  ""|y|Y|yes|YES)
+    echo
+    echo "== Hangup =="
+    gateway_call facetime.hangup
+    ;;
+  *)
+    echo "Hang up the FaceTime call from the iPhone, then press Enter."
+    read -r _
+    ;;
+esac
 
 sleep 2
 
