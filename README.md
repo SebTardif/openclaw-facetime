@@ -122,3 +122,15 @@ openclaw gateway call facetime.testAudio --params '{"phrase":"This is OpenClaw s
 ```
 
 During a call, `facetime.status` reports per-call `audioRouted`, `audioDevices`, and `lastRoutingError`. `audioRouted` must be `true` and both devices should be `BlackHole 16ch` before testing realtime speech.
+
+To hang up the active FaceTime call from OpenClaw during testing:
+
+```bash
+openclaw gateway call facetime.hangup --json
+```
+
+To target a specific call:
+
+```bash
+openclaw gateway call facetime.hangup --params '{"callUUID":"..."}' --json
+```

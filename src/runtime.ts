@@ -51,6 +51,7 @@ export type FaceTimeRuntimeStatus = {
 export type FaceTimeRuntime = {
   config: FaceTimeConfig;
   status(): Promise<FaceTimeRuntimeStatus>;
+  hangup(params?: { callUUID?: unknown }): Promise<{ callUUID: string }>;
   testAudio(params?: { phrase?: unknown }): Promise<{ phrase: string; deviceName: string }>;
   stop(): Promise<void>;
 };
@@ -294,6 +295,21 @@ export async function createFaceTimeRuntime(params: {
           lastRoutingError: call.lastRoutingError,
         })),
       };
+    },
+    async hangup(hangupParams) {
+      const requestedCallUUID =
+        typeof hangupParams?.callUUID === "string" && hangupParams.callUUID.trim()
+          ? hangupParams.callUUID.trim()
+          : undefined;
+      const call = requestedCallUUID
+        ? calls.get(requestedCallUUID)
+        : ([...calls.values()].find((candidate) => candidate.talk) ?? [...calls.values()][0]);
+      if (!call) {
+        throw new Error("no active FaceTime call to hang up");
+      }
+      await helper.leaveCall(call.callUUID);
+      await closeCall(call.callUUID, "operator-hangup");
+      return { callUUID: call.callUUID };
     },
     async testAudio(testParams) {
       const activeCall = [...calls.values()].find((call) => call.talk) ?? [...calls.values()][0];

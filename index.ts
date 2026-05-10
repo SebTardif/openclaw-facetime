@@ -94,6 +94,23 @@ export default definePluginEntry({
       { scope: "operator.write" },
     );
 
+    api.registerGatewayMethod(
+      "facetime.hangup",
+      async ({ params, respond }: GatewayRequestHandlerOptions) => {
+        try {
+          const rt = await ensureRuntime();
+          const callUUID =
+            params && typeof params === "object" && "callUUID" in params
+              ? (params as { callUUID?: unknown }).callUUID
+              : undefined;
+          respond(true, { ok: true, ...(await rt.hangup({ callUUID })) });
+        } catch (error) {
+          respond(false, undefined, errorShape(ErrorCodes.UNAVAILABLE, formatErrorMessage(error)));
+        }
+      },
+      { scope: "operator.write" },
+    );
+
     void ensureRuntime().catch((error) => {
       api.logger.warn(`[facetime] startup skipped: ${formatErrorMessage(error)}`);
       runtimePromise = undefined;
