@@ -138,7 +138,7 @@ export function resolveFaceTimeConfig(input: unknown): FaceTimeConfig {
     },
     realtime: {
       provider: normalizeOptionalString(realtime.provider) ?? "openai",
-      model: normalizeOptionalString(realtime.model) ?? "gpt-realtime",
+      model: normalizeOptionalString(realtime.model) ?? "gpt-realtime-2",
       voice: normalizeOptionalString(realtime.voice) ?? "cedar",
       sessionKey: normalizeOptionalString(realtime.sessionKey) ?? "main",
       brain: "agent-consult",

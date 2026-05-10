@@ -13,7 +13,7 @@ describe("facetime config", () => {
 
     expect(config.helperPort).toBe(defaultFaceTimeHelperPort());
     expect(config.audio.blackholeDeviceUid).toBe("BlackHole 16ch");
-    expect(config.realtime.model).toBe("gpt-realtime");
+    expect(config.realtime.model).toBe("gpt-realtime-2");
     expect(config.realtime.voice).toBe("cedar");
     expect(config.realtime.toolPolicy).toBe("owner");
   });
