@@ -152,6 +152,14 @@ echo "== Initial status =="
 status_json="$(read_status)"
 printf '%s\n' "$status_json"
 initial_status_json="$status_json"
+if status_has_call <<<"$initial_status_json"; then
+  echo "Initial state is not clean: facetime.status already reports an active call." >&2
+  exit 1
+fi
+if ! status_audio_defaults_not_blackhole <<<"$initial_status_json"; then
+  echo "Initial state is not clean: audio defaults are already routed to BlackHole." >&2
+  exit 1
+fi
 
 echo
 echo "== Initial sox processes =="
