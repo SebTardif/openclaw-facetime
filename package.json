@@ -50,5 +50,15 @@
     "build": {
       "openclawVersion": "2026.5.10-beta.1"
     }
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@google/genai",
+      "@openclaw/fs-safe",
+      "koffi",
+      "openclaw",
+      "protobufjs",
+      "tree-sitter-bash"
+    ]
   }
 }
