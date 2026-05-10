@@ -74,4 +74,40 @@ describe("FaceTime helper RPC", () => {
     client.write(`${JSON.stringify({ transactionId: payload.transactionId })}\r\n`);
     await expect(actionPromise).resolves.toBeUndefined();
   });
+
+  it("sends leave-call actions over newline-framed JSON", async () => {
+    const port = await reservePort();
+    helper = new FaceTimeHelperSocketServer({
+      host: "127.0.0.1",
+      port,
+      logger: console,
+      onMessage: () => undefined,
+    });
+    await helper.start();
+
+    client = net.createConnection({ host: "127.0.0.1", port });
+    client.setEncoding("utf8");
+    await new Promise<void>((resolve) => client?.once("connect", resolve));
+    await waitFor(() => helper?.connectedSockets === 1);
+
+    const received = new Promise<Record<string, unknown>>((resolve, reject) => {
+      client?.once("data", (chunk) => {
+        try {
+          resolve(JSON.parse(String(chunk).trim()) as Record<string, unknown>);
+        } catch (error) {
+          reject(error);
+        }
+      });
+    });
+
+    const actionPromise = helper.leaveCall("call-2");
+    const payload = await received;
+    expect(payload).toMatchObject({
+      action: "leave-call",
+      data: { callUUID: "call-2" },
+    });
+
+    client.write(`${JSON.stringify({ transactionId: payload.transactionId })}\r\n`);
+    await expect(actionPromise).resolves.toBeUndefined();
+  });
 });
