@@ -131,15 +131,26 @@ pgrep -fl sox || true
 
 echo
 echo "Place the whitelisted FaceTime call from the iPhone now."
-echo "This script will wait up to ${wait_seconds}s for facetime.status to report an active call."
+echo "This script will wait up to ${wait_seconds}s for facetime.status to report a BlackHole-routed active call."
 deadline=$((SECONDS + wait_seconds))
+call_seen=false
 while true; do
   status_json="$(read_status)"
   if status_has_call <<<"$status_json"; then
-    break
+    if [[ "$call_seen" == false ]]; then
+      echo "FaceTime call detected; waiting for BlackHole audio routing."
+      call_seen=true
+    fi
+    if status_has_routed_blackhole_call <<<"$status_json"; then
+      break
+    fi
   fi
   if (( SECONDS >= deadline )); then
-    echo "Timed out waiting for an active FaceTime call." >&2
+    if [[ "$call_seen" == true ]]; then
+      echo "Timed out waiting for the active FaceTime call to route through BlackHole." >&2
+    else
+      echo "Timed out waiting for an active FaceTime call." >&2
+    fi
     printf '%s\n' "$status_json" >&2
     exit 1
   fi
@@ -149,11 +160,6 @@ done
 echo
 echo "== Active call status =="
 printf '%s\n' "$status_json"
-
-if ! status_has_routed_blackhole_call <<<"$status_json"; then
-  echo "Active call is not routed through BlackHole." >&2
-  exit 1
-fi
 echo "Audio routing check passed: active call is routed through BlackHole."
 
 echo
