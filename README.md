@@ -107,6 +107,14 @@ Expected idle output includes:
 
 If `helperConnected` is `false`, the gateway is listening but FaceTime has not loaded `FaceTimeHelper.dylib`. Re-run `pnpm inject:helper` from an interactive Terminal after opening FaceTime.
 
+Before placing a live call, run the preflight check:
+
+```bash
+openclaw gateway call facetime.preflight --json
+```
+
+`ok` must be `true`. The checks cover helper connection, current audio defaults, BlackHole input/output visibility, SoX, FaceTime.app, and realtime provider credentials.
+
 The expected path is:
 
 ```text

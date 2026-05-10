@@ -1,4 +1,3 @@
-import { formatErrorMessage } from "openclaw/plugin-sdk/error-runtime";
 import {
   ErrorCodes,
   errorShape,
@@ -6,6 +5,7 @@ import {
 } from "openclaw/plugin-sdk/gateway-runtime";
 import { definePluginEntry, type OpenClawPluginApi } from "openclaw/plugin-sdk/plugin-entry";
 import { createFaceTimeRuntime, type FaceTimeRuntime } from "./runtime-entry.js";
+import { formatErrorMessage } from "./src/errors.js";
 import {
   resolveFaceTimeConfig,
   validateFaceTimeConfig,
@@ -92,6 +92,19 @@ export default definePluginEntry({
         }
       },
       { scope: "operator.write" },
+    );
+
+    api.registerGatewayMethod(
+      "facetime.preflight",
+      async ({ respond }: GatewayRequestHandlerOptions) => {
+        try {
+          const rt = await ensureRuntime();
+          respond(true, await rt.preflight());
+        } catch (error) {
+          respond(false, undefined, errorShape(ErrorCodes.UNAVAILABLE, formatErrorMessage(error)));
+        }
+      },
+      { scope: "operator.read" },
     );
 
     api.registerGatewayMethod(

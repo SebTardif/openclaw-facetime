@@ -20,6 +20,7 @@ import { resolveFaceTimeConfig, validateFaceTimeConfig, type FaceTimeConfig } fr
 import { formatErrorMessage } from "./errors.js";
 import { prepareFaceTimeCallAudio } from "./facetime-ui.js";
 import { FaceTimeHelperSocketServer } from "./helper-rpc.js";
+import { runFaceTimePreflight, type FaceTimePreflightResult } from "./preflight.js";
 import { startFaceTimeTalkDriver, type FaceTimeTalkDriver } from "./talk-driver.js";
 import { playFaceTimeTestAudio } from "./test-audio.js";
 
@@ -51,6 +52,7 @@ export type FaceTimeRuntimeStatus = {
 export type FaceTimeRuntime = {
   config: FaceTimeConfig;
   status(): Promise<FaceTimeRuntimeStatus>;
+  preflight(): Promise<FaceTimePreflightResult>;
   hangup(params?: { callUUID?: unknown }): Promise<{ callUUID: string }>;
   testAudio(params?: { phrase?: unknown }): Promise<{ phrase: string; deviceName: string }>;
   stop(): Promise<void>;
@@ -310,6 +312,15 @@ export async function createFaceTimeRuntime(params: {
       await helper.leaveCall(call.callUUID);
       await closeCall(call.callUUID, "operator-hangup");
       return { callUUID: call.callUUID };
+    },
+    async preflight() {
+      return await runFaceTimePreflight({
+        config,
+        fullConfig: params.fullConfig,
+        runtime: params.runtime,
+        logger: params.logger,
+        helperConnected: helper.connectedSockets > 0,
+      });
     },
     async testAudio(testParams) {
       const activeCall = [...calls.values()].find((call) => call.talk) ?? [...calls.values()][0];

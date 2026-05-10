@@ -49,6 +49,17 @@ async function currentDevice(deps: AudioRoutingDeps, type: "input" | "output") {
   return readCommandOutput(result) || undefined;
 }
 
+export async function listAudioDevices(deps: AudioRoutingDeps, type: "input" | "output") {
+  const result = await runSwitchAudioSource(deps, ["-a", "-t", type]);
+  if (result.code !== 0) {
+    throw new Error(result.stderr || result.stdout || `SwitchAudioSource -a -t ${type} failed`);
+  }
+  return `${result.stdout ?? ""}`
+    .split(/\r?\n/)
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
 async function setDevice(deps: AudioRoutingDeps, type: "input" | "output", device: string) {
   const result = await runSwitchAudioSource(deps, ["-s", device, "-t", type]);
   if (result.code !== 0) {
