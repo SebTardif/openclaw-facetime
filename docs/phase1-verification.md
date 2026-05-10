@@ -14,6 +14,7 @@ Status as of 2026-05-10: implementation and non-call readiness are complete; liv
 - Realtime provider: `openai:gpt-realtime-2`
 - Active calls: none
 - Leftover `sox` processes: none
+- OpenClaw background tasks: `0 queued`, `0 running`, `0 issues`
 
 ## Prompt-To-Artifact Checklist
 
@@ -33,6 +34,7 @@ Status as of 2026-05-10: implementation and non-call readiness are complete; liv
 | Operator hangup | `facetime.hangup`, helper `leave-call`, tests in `tests/helper-rpc.test.ts` | Done |
 | Preflight before live test | `facetime.preflight`, `scripts/live-smoke.sh` | Done |
 | CI | GitHub Actions `pnpm typecheck`, `pnpm test`, `pnpm build` | Passing |
+| Idle task cleanup | `openclaw tasks list --status running` reports `0 queued`, `0 running`, `0 issues` | Done |
 
 ## Live Acceptance Gates
 
