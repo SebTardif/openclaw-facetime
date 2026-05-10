@@ -28,6 +28,7 @@ const faceTimeConfigSchema = {
     "realtime.model": { label: "Realtime Model", advanced: true },
     "realtime.voice": { label: "Realtime Voice", advanced: true },
     "realtime.sessionKey": { label: "Lobster Session Key", advanced: true },
+    "realtime.brain": { label: "Brain Mode", advanced: true },
     "realtime.toolPolicy": { label: "Tool Policy", advanced: true },
   },
 };

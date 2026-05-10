@@ -37,6 +37,7 @@
           "model": { "type": "string" },
           "voice": { "type": "string" },
           "sessionKey": { "type": "string" },
+          "brain": { "type": "string", "enum": ["agent-consult"] },
           "toolPolicy": { "type": "string" },
           "instructions": { "type": "string" },
           "providers": {
