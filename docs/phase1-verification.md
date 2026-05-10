@@ -1,11 +1,12 @@
 # Phase 1 Verification
 
-Status as of 2026-05-10: implementation and non-call readiness are complete; live call acceptance is still unverified.
+Status as of 2026-05-10 09:22 PDT: implementation and non-call readiness are complete; live call acceptance is still unverified.
 
 ## Current Evidence
 
 - Repository: `/Users/lobster/GitHub/openclaw-facetime`
-- Latest successful CI run: `25633079849`
+- Current HEAD: `e8eaf48`
+- Latest successful CI run: `25633272881`
 - Local live preflight: `ok: true`
 - Helper: connected
 - FaceTime.app: running
@@ -33,7 +34,7 @@ Status as of 2026-05-10: implementation and non-call readiness are complete; liv
 | Barge-in handling | `src/talk-driver.ts` clears output on `input_audio_buffer.speech_started` | Implemented, live verification pending |
 | Operator hangup | `facetime.hangup`, helper `leave-call`, tests in `tests/helper-rpc.test.ts` | Done |
 | Preflight before live test | `facetime.preflight`, `scripts/live-smoke.sh` | Done |
-| CI | GitHub Actions `pnpm typecheck`, `pnpm test`, `pnpm build` | Passing |
+| CI | GitHub Actions run `25633272881` on `e8eaf48` ran `pnpm typecheck`, `pnpm test`, `bash -n scripts/*.sh`, and `pnpm build` | Passing |
 | Idle task cleanup | `openclaw tasks list --status running` reports `0 queued`, `0 running`, `0 issues` | Done |
 
 ## Live Acceptance Gates
