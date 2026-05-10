@@ -35,6 +35,7 @@ Status as of 2026-05-10 09:22 PDT: implementation and non-call readiness are com
 | Barge-in handling | `src/talk-driver.ts` clears output on `input_audio_buffer.speech_started` | Implemented, live verification pending |
 | Operator hangup | `facetime.hangup`, helper `leave-call`, tests in `tests/helper-rpc.test.ts` | Done |
 | Preflight before live test | `facetime.preflight`, `scripts/live-smoke.sh` | Done |
+| Full live acceptance runner | `scripts/live-acceptance.sh` waits for a user-placed call and records the Phase 1 gates | Ready, live verification pending |
 | CI | GitHub Actions run `25633733315` ran `pnpm typecheck`, `pnpm test`, `bash -n scripts/*.sh`, and `pnpm build` | Passing |
 | Idle task cleanup | `openclaw tasks list --status running` reports `0 queued`, `0 running`, `0 issues` | Done |
 
@@ -99,3 +100,9 @@ Run these only with the user present.
    ```
 
    Expected: no calls, no `sox` processes, audio defaults restored to MacBook mic/speakers.
+
+The same gates can be run as one guided pass with:
+
+```bash
+scripts/live-acceptance.sh
+```
