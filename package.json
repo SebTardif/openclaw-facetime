@@ -1,6 +1,6 @@
 {
   "name": "@openclaw/facetime",
-  "version": "2026.5.8",
+  "version": "2026.5.10-beta.1",
   "description": "OpenClaw FaceTime voice carrier for Lobster",
   "repository": {
     "type": "git",
@@ -20,12 +20,12 @@
   },
   "devDependencies": {
     "@types/node": "25.6.2",
-    "openclaw": "file:../openclaw",
+    "openclaw": "2026.5.10-beta.1",
     "typescript": "^5.9.3",
     "vitest": "^4.1.5"
   },
   "peerDependencies": {
-    "openclaw": ">=2026.5.8"
+    "openclaw": ">=2026.5.10-beta.1"
   },
   "peerDependenciesMeta": {
     "openclaw": {
@@ -42,13 +42,13 @@
     "install": {
       "npmSpec": "@openclaw/facetime",
       "defaultChoice": "local",
-      "minHostVersion": ">=2026.5.8"
+      "minHostVersion": ">=2026.5.10-beta.1"
     },
     "compat": {
-      "pluginApi": ">=2026.5.8"
+      "pluginApi": ">=2026.5.10-beta.1"
     },
     "build": {
-      "openclawVersion": "2026.5.8"
+      "openclawVersion": "2026.5.10-beta.1"
     }
   }
 }
