@@ -41,9 +41,15 @@ openclaw gateway call facetime.preflight --json --timeout 20000
 
 echo
 echo "== FaceTime status =="
-openclaw gateway call facetime.status --json --timeout 10000
+status_json="$(openclaw gateway call facetime.status --json --timeout 10000)"
+printf '%s\n' "$status_json"
 
 if [[ "$test_audio" == true ]]; then
+  if ! node -e 'const fs=require("node:fs"); const s=JSON.parse(fs.readFileSync(0,"utf8")); process.exit(Array.isArray(s.calls) && s.calls.length > 0 ? 0 : 1)' <<<"$status_json"; then
+    echo "Refusing --test-audio because facetime.status has no active calls." >&2
+    exit 1
+  fi
+
   echo
   echo "== FaceTime test audio =="
   openclaw gateway call facetime.testAudio \
