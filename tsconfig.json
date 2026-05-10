@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "allowSyntheticDefaultImports": true,
+    "declaration": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "lib": ["DOM", "DOM.Iterable", "ES2023", "ScriptHost"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "noEmit": true,
+    "noEmitOnError": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "target": "es2023",
+    "typeRoots": ["./node_modules/@types", "../openclaw/node_modules/@types"],
+    "types": ["node"],
+    "paths": {
+      "openclaw/plugin-sdk": ["../openclaw/src/plugin-sdk/index.ts"],
+      "openclaw/plugin-sdk/*": ["../openclaw/src/plugin-sdk/*.ts"]
+    }
+  },
+  "include": ["./*.ts", "./src/**/*.ts", "../openclaw/src/types/**/*.d.ts"],
+  "exclude": ["./tests/**", "./dist/**", "./node_modules/**"]
+}

@@ -1,0 +1,16 @@
+//
+//  PrefixHeader.pch
+//  typeStatus13
+//
+//  Created by Wolfgang Baird on 1/26/18.
+//Copyright © 2018 Wolfgang Baird. All rights reserved.
+//
+
+#ifndef FaceTimeHelper_PrefixHeader_pch
+#define FaceTimeHelper_PrefixHeader_pch
+
+#import <Cocoa/Cocoa.h>
+#import "ZKSwizzle.h"
+
+#endif
+

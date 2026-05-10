@@ -1,0 +1,27 @@
+import { describe, expect, it } from "vitest";
+import {
+  defaultFaceTimeHelperPort,
+  resolveFaceTimeConfig,
+  validateFaceTimeConfig,
+} from "../src/config.js";
+
+describe("facetime config", () => {
+  it("resolves helper port defaults", () => {
+    const config = resolveFaceTimeConfig({
+      whitelistHandles: ["mailto:omar@example.com"],
+    });
+
+    expect(config.helperPort).toBe(defaultFaceTimeHelperPort());
+    expect(config.audio.blackholeDeviceUid).toBe("BlackHole 16ch");
+    expect(config.realtime.model).toBe("gpt-realtime");
+    expect(config.realtime.voice).toBe("cedar");
+    expect(config.realtime.toolPolicy).toBe("owner");
+  });
+
+  it("requires at least one whitelist handle", () => {
+    const validation = validateFaceTimeConfig(resolveFaceTimeConfig({}));
+
+    expect(validation.valid).toBe(false);
+    expect(validation.errors.join("\n")).toContain("whitelistHandles");
+  });
+});

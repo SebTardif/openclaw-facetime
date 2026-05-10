@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.DS_Store
+
+helper/Pods/
+helper/*.xcworkspace/xcuserdata/
+helper/FaceTimeHelper.xcodeproj/xcuserdata/
+*.xcuserstate
+DerivedData/

@@ -1,0 +1,54 @@
+{
+  "name": "@openclaw/facetime",
+  "version": "2026.5.8",
+  "description": "OpenClaw FaceTime voice carrier for Lobster",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/openclaw/openclaw-facetime"
+  },
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "build:helper:macabi": "bash scripts/build-helper-macabi.sh",
+    "inject:helper": "bash scripts/inject-helper.sh",
+    "inject:helper:terminal": "bash scripts/inject-helper-terminal.sh",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run tests --passWithNoTests"
+  },
+  "dependencies": {
+    "typebox": "1.1.38"
+  },
+  "devDependencies": {
+    "@types/node": "25.6.2",
+    "openclaw": "file:../openclaw",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.5"
+  },
+  "peerDependencies": {
+    "openclaw": ">=2026.5.8"
+  },
+  "peerDependenciesMeta": {
+    "openclaw": {
+      "optional": true
+    }
+  },
+  "openclaw": {
+    "extensions": [
+      "./index.ts"
+    ],
+    "runtimeExtensions": [
+      "./dist/index.js"
+    ],
+    "install": {
+      "npmSpec": "@openclaw/facetime",
+      "defaultChoice": "local",
+      "minHostVersion": ">=2026.5.8"
+    },
+    "compat": {
+      "pluginApi": ">=2026.5.8"
+    },
+    "build": {
+      "openclawVersion": "2026.5.8"
+    }
+  }
+}

@@ -1,0 +1,76 @@
+{
+  "id": "facetime",
+  "name": "FaceTime",
+  "description": "Private FaceTime realtime voice carrier for Lobster",
+  "activation": {
+    "onStartup": true
+  },
+  "contracts": {
+    "tools": []
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": { "type": "boolean" },
+      "helperHost": { "type": "string" },
+      "helperPort": { "type": "number" },
+      "whitelistHandles": {
+        "type": "array",
+        "items": { "type": "string" }
+      },
+      "audio": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "blackholeDeviceUid": { "type": "string" },
+          "blackholeDeviceName": { "type": "string" },
+          "sampleRateHz": { "type": "number" },
+          "saveAndRestoreDefaults": { "type": "boolean" }
+        }
+      },
+      "realtime": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "provider": { "type": "string" },
+          "model": { "type": "string" },
+          "voice": { "type": "string" },
+          "sessionKey": { "type": "string" },
+          "toolPolicy": { "type": "string" },
+          "instructions": { "type": "string" },
+          "providers": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        }
+      }
+    }
+  },
+  "channelEnvVars": {
+    "facetime": [
+      "OPENAI_API_KEY"
+    ]
+  },
+  "uiHints": {
+    "enabled": { "label": "Enable FaceTime Voice" },
+    "helperHost": { "label": "Helper Host", "advanced": true },
+    "helperPort": { "label": "Helper Port", "advanced": true },
+    "whitelistHandles": {
+      "label": "Allowed FaceTime Handles",
+      "help": "Only incoming calls from these handle values are auto-answered."
+    },
+    "audio.blackholeDeviceUid": { "label": "BlackHole Device", "advanced": true },
+    "audio.sampleRateHz": { "label": "Audio Sample Rate", "advanced": true },
+    "audio.saveAndRestoreDefaults": { "label": "Restore Audio Defaults", "advanced": true },
+    "realtime.provider": { "label": "Realtime Provider", "advanced": true },
+    "realtime.model": { "label": "Realtime Model", "advanced": true },
+    "realtime.voice": { "label": "Realtime Voice", "advanced": true },
+    "realtime.sessionKey": { "label": "Lobster Session Key", "advanced": true },
+    "realtime.brain": { "label": "Brain Mode", "advanced": true },
+    "realtime.toolPolicy": { "label": "Tool Policy", "advanced": true }
+  }
+}
