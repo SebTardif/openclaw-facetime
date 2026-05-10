@@ -1,5 +1,3 @@
-import { normalizeOptionalString } from "openclaw/plugin-sdk/text-runtime";
-
 export const REALTIME_VOICE_AGENT_CONSULT_TOOL_NAME = "openclaw_agent_consult";
 export const REALTIME_VOICE_AGENT_CONSULT_TOOL_POLICIES = [
   "safe-read-only",
@@ -44,6 +42,14 @@ function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : {};
+}
+
+function normalizeOptionalString(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+  const normalized = value.trim();
+  return normalized || undefined;
 }
 
 function resolveBoolean(value: unknown, fallback: boolean): boolean {
