@@ -73,7 +73,23 @@ status_has_call() {
   '
 }
 
-status_audio_defaults_restored() {
+status_audio_defaults_match_baseline() {
+  local baseline_json="$1"
+  BASELINE_STATUS_JSON="$baseline_json" node -e '
+    const fs = require("node:fs");
+    const baseline = JSON.parse(process.env.BASELINE_STATUS_JSON || "{}");
+    const status = JSON.parse(fs.readFileSync(0, "utf8"));
+    const baselineDefaults = baseline && typeof baseline === "object" ? baseline.currentAudioDefaults : undefined;
+    const defaults = status && typeof status === "object" ? status.currentAudioDefaults : undefined;
+    const baselineInput = baselineDefaults && typeof baselineDefaults === "object" ? String(baselineDefaults.inputDeviceUid || "") : "";
+    const baselineOutput = baselineDefaults && typeof baselineDefaults === "object" ? String(baselineDefaults.outputDeviceUid || "") : "";
+    const input = defaults && typeof defaults === "object" ? String(defaults.inputDeviceUid || "") : "";
+    const output = defaults && typeof defaults === "object" ? String(defaults.outputDeviceUid || "") : "";
+    process.exit(baselineInput && baselineOutput && input === baselineInput && output === baselineOutput ? 0 : 1);
+  '
+}
+
+status_audio_defaults_not_blackhole() {
   node -e '
     const fs = require("node:fs");
     const status = JSON.parse(fs.readFileSync(0, "utf8"));
@@ -135,6 +151,7 @@ echo
 echo "== Initial status =="
 status_json="$(read_status)"
 printf '%s\n' "$status_json"
+initial_status_json="$status_json"
 
 echo
 echo "== Initial sox processes =="
@@ -233,8 +250,12 @@ if status_has_call <<<"$status_json"; then
   echo "Cleanup failed: facetime.status still reports an active call." >&2
   exit 1
 fi
-if ! status_audio_defaults_restored <<<"$status_json"; then
+if ! status_audio_defaults_not_blackhole <<<"$status_json"; then
   echo "Cleanup failed: audio defaults were not restored away from BlackHole." >&2
+  exit 1
+fi
+if ! status_audio_defaults_match_baseline "$initial_status_json" <<<"$status_json"; then
+  echo "Cleanup failed: audio defaults do not match the pre-call baseline." >&2
   exit 1
 fi
 
