@@ -1,22 +1,33 @@
 # Phase 1 Verification
 
-Status as of 2026-05-10 09:22 PDT: implementation and non-call readiness are complete; live call acceptance is still unverified.
+Implementation and non-call readiness are complete; live call acceptance is still unverified.
 
-## Current Evidence
+## Current Evidence Commands
 
-- Repository: `/Users/lobster/GitHub/openclaw-facetime`
-- Implementation commit verified by CI: `e8eaf48`
-- Docs refresh commit verified by CI: `2a3f349`
-- Latest successful CI run observed during audit: `25633733315`
-- Local live preflight: `ok: true`
-- Helper: connected
-- FaceTime.app: running
-- Audio defaults: `MacBook Air Microphone` input, `MacBook Air Speakers` output
-- BlackHole: `BlackHole 16ch` visible as both input and output
-- Realtime provider: `openai:gpt-realtime-2`
-- Active calls: none
-- Leftover `sox` processes: none
-- OpenClaw background tasks: `0 queued`, `0 running`, `0 issues`
+Run these from `/Users/lobster/GitHub/openclaw-facetime` before attempting a live call:
+
+```bash
+git status --short
+git rev-parse --short HEAD
+gh run list --repo openclaw/openclaw-facetime --branch main --limit 3 \
+  --json databaseId,headSha,status,conclusion,workflowName,createdAt,url
+scripts/live-smoke.sh
+openclaw tasks list --status running
+```
+
+Required idle evidence:
+
+- Working tree is clean.
+- Branch-tip CI is successful.
+- `facetime.preflight` returns `ok: true`.
+- Helper is connected.
+- FaceTime.app is running.
+- Current audio defaults are the real MacBook mic/speakers.
+- BlackHole is visible as both input and output.
+- Realtime provider credentials resolve to `openai:gpt-realtime-2`.
+- `facetime.status` has `calls: []`.
+- No leftover `sox` processes.
+- OpenClaw background tasks show `0 queued`, `0 running`, `0 issues`.
 
 ## Prompt-To-Artifact Checklist
 
@@ -36,7 +47,7 @@ Status as of 2026-05-10 09:22 PDT: implementation and non-call readiness are com
 | Operator hangup | `facetime.hangup`, helper `leave-call`, tests in `tests/helper-rpc.test.ts` | Done |
 | Preflight before live test | `facetime.preflight`, `scripts/live-smoke.sh` | Done |
 | Full live acceptance runner | `scripts/live-acceptance.sh` waits for a user-placed call and records the Phase 1 gates | Ready, live verification pending |
-| CI | GitHub Actions run `25633733315` ran `pnpm typecheck`, `pnpm test`, `bash -n scripts/*.sh`, and `pnpm build` | Passing |
+| CI | `.github/workflows/ci.yml` runs `pnpm typecheck`, `pnpm test`, `bash -n scripts/*.sh`, and `pnpm build`; verify branch-tip success with `gh run list` | Done |
 | Idle task cleanup | `openclaw tasks list --status running` reports `0 queued`, `0 running`, `0 issues` | Done |
 
 ## Live Acceptance Gates
