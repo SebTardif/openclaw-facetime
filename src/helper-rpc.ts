@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import net from "node:net";
-import { formatErrorMessage } from "openclaw/plugin-sdk/error-runtime";
 import type { RuntimeLogger } from "openclaw/plugin-sdk/plugin-runtime";
+import { formatErrorMessage } from "./errors.js";
 
 type HelperSocketServerParams = {
   host: string;

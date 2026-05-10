@@ -1,9 +1,13 @@
-import {
-  REALTIME_VOICE_AGENT_CONSULT_TOOL_NAME,
-  resolveRealtimeVoiceAgentConsultToolPolicy,
-  type RealtimeVoiceAgentConsultToolPolicy,
-} from "openclaw/plugin-sdk/realtime-voice";
 import { normalizeOptionalString } from "openclaw/plugin-sdk/text-runtime";
+
+export const REALTIME_VOICE_AGENT_CONSULT_TOOL_NAME = "openclaw_agent_consult";
+export const REALTIME_VOICE_AGENT_CONSULT_TOOL_POLICIES = [
+  "safe-read-only",
+  "owner",
+  "none",
+] as const;
+export type RealtimeVoiceAgentConsultToolPolicy =
+  (typeof REALTIME_VOICE_AGENT_CONSULT_TOOL_POLICIES)[number];
 
 export type FaceTimeConfig = {
   enabled: boolean;
@@ -76,6 +80,18 @@ function resolveStringArray(value: unknown): string[] {
   return value
     .map((entry) => normalizeOptionalString(entry))
     .filter((entry): entry is string => Boolean(entry));
+}
+
+function resolveRealtimeVoiceAgentConsultToolPolicy(
+  value: unknown,
+  fallback: RealtimeVoiceAgentConsultToolPolicy,
+): RealtimeVoiceAgentConsultToolPolicy {
+  const normalized = normalizeOptionalString(value)?.toLowerCase();
+  return REALTIME_VOICE_AGENT_CONSULT_TOOL_POLICIES.includes(
+    normalized as RealtimeVoiceAgentConsultToolPolicy,
+  )
+    ? (normalized as RealtimeVoiceAgentConsultToolPolicy)
+    : fallback;
 }
 
 function resolveProviders(value: unknown): Record<string, Record<string, unknown>> {

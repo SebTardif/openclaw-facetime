@@ -3,8 +3,8 @@ import { readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { PluginRuntime, RuntimeLogger } from "openclaw/plugin-sdk/plugin-runtime";
-import { formatErrorMessage } from "openclaw/plugin-sdk/error-runtime";
 import { startFaceTimeAudioPump, type FaceTimeAudioPump } from "./audio-pump.js";
+import { formatErrorMessage } from "./errors.js";
 
 export type TestAudioDeps = {
   runCommandWithTimeout: PluginRuntime["system"]["runCommandWithTimeout"];

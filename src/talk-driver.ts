@@ -1,5 +1,4 @@
 import type { OpenClawConfig } from "openclaw/plugin-sdk/config-types";
-import { formatErrorMessage } from "openclaw/plugin-sdk/error-runtime";
 import type { PluginRuntime, RuntimeLogger } from "openclaw/plugin-sdk/plugin-runtime";
 import {
   buildRealtimeVoiceAgentConsultWorkingResponse,
@@ -20,6 +19,7 @@ import {
 import { resolveConfiguredSecretInputString } from "openclaw/plugin-sdk/secret-input-runtime";
 import { startFaceTimeAudioPump, type FaceTimeAudioPump } from "./audio-pump.js";
 import type { FaceTimeConfig } from "./config.js";
+import { formatErrorMessage } from "./errors.js";
 
 export type FaceTimeTalkDriver = {
   readonly callUUID: string;

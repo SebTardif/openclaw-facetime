@@ -1,8 +1,8 @@
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import type { Writable } from "node:stream";
-import { formatErrorMessage } from "openclaw/plugin-sdk/error-runtime";
 import type { RuntimeLogger } from "openclaw/plugin-sdk/plugin-runtime";
+import { formatErrorMessage } from "./errors.js";
 
 type PumpProcess = {
   pid?: number;

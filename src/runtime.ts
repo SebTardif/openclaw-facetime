@@ -1,5 +1,4 @@
 import type { OpenClawConfig } from "openclaw/plugin-sdk/config-types";
-import { formatErrorMessage } from "openclaw/plugin-sdk/error-runtime";
 import type { PluginRuntime, RuntimeLogger } from "openclaw/plugin-sdk/plugin-runtime";
 import {
   captureCurrentDefaults,
@@ -18,6 +17,7 @@ import {
   type FaceTimeCallStatusEvent,
 } from "./call-events.js";
 import { resolveFaceTimeConfig, validateFaceTimeConfig, type FaceTimeConfig } from "./config.js";
+import { formatErrorMessage } from "./errors.js";
 import { prepareFaceTimeCallAudio } from "./facetime-ui.js";
 import { FaceTimeHelperSocketServer } from "./helper-rpc.js";
 import { startFaceTimeTalkDriver, type FaceTimeTalkDriver } from "./talk-driver.js";
