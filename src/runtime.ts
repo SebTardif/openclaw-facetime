@@ -22,6 +22,10 @@ import { prepareFaceTimeCallAudio } from "./facetime-ui.js";
 import { FaceTimeHelperSocketServer } from "./helper-rpc.js";
 import { runFaceTimePreflight, type FaceTimePreflightResult } from "./preflight.js";
 import { startFaceTimeTalkDriver, type FaceTimeTalkDriver } from "./talk-driver.js";
+import {
+  summarizeRecentTalkEvents,
+  type FaceTimeTalkEventSummary,
+} from "./talk-events-summary.js";
 import { playFaceTimeTestAudio } from "./test-audio.js";
 
 type ActiveFaceTimeCall = {
@@ -46,6 +50,7 @@ export type FaceTimeRuntimeStatus = {
     audioRouted: boolean;
     audioDevices?: AudioDefaultsSnapshot;
     lastRoutingError?: string;
+    recentTalkEvents?: FaceTimeTalkEventSummary[];
   }>;
 };
 
@@ -295,6 +300,9 @@ export async function createFaceTimeRuntime(params: {
           audioRouted: call.audioRouted,
           audioDevices: call.audioDevices,
           lastRoutingError: call.lastRoutingError,
+          recentTalkEvents: call.talk
+            ? summarizeRecentTalkEvents(call.talk.recentTalkEvents)
+            : undefined,
         })),
       };
     },
