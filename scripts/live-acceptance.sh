@@ -73,6 +73,17 @@ status_has_call() {
   '
 }
 
+status_audio_defaults_restored() {
+  node -e '
+    const fs = require("node:fs");
+    const status = JSON.parse(fs.readFileSync(0, "utf8"));
+    const defaults = status && typeof status === "object" ? status.currentAudioDefaults : undefined;
+    const input = defaults && typeof defaults === "object" ? String(defaults.inputDeviceUid || "") : "";
+    const output = defaults && typeof defaults === "object" ? String(defaults.outputDeviceUid || "") : "";
+    process.exit(input && output && !input.includes("BlackHole") && !output.includes("BlackHole") ? 0 : 1);
+  '
+}
+
 status_has_routed_blackhole_call() {
   node -e '
     const fs = require("node:fs");
@@ -216,11 +227,23 @@ sleep 2
 
 echo
 echo "== Final status =="
-read_status
+status_json="$(read_status)"
+printf '%s\n' "$status_json"
+if status_has_call <<<"$status_json"; then
+  echo "Cleanup failed: facetime.status still reports an active call." >&2
+  exit 1
+fi
+if ! status_audio_defaults_restored <<<"$status_json"; then
+  echo "Cleanup failed: audio defaults were not restored away from BlackHole." >&2
+  exit 1
+fi
 
 echo
 echo "== Final sox processes =="
-pgrep -fl sox || true
+if pgrep -fl sox; then
+  echo "Cleanup failed: sox processes are still running." >&2
+  exit 1
+fi
 
 echo
 echo "== Final running tasks =="
