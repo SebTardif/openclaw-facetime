@@ -18,10 +18,20 @@ phrase="This is OpenClaw speaking through FaceTime."
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --wait-seconds)
+      if [[ $# -lt 2 ]]; then
+        echo "--wait-seconds requires a value" >&2
+        usage >&2
+        exit 2
+      fi
       wait_seconds="${2:-}"
       shift 2
       ;;
     --phrase)
+      if [[ $# -lt 2 ]]; then
+        echo "--phrase requires a value" >&2
+        usage >&2
+        exit 2
+      fi
       phrase="${2:-}"
       shift 2
       ;;
