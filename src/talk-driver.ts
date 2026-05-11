@@ -215,6 +215,8 @@ export async function startFaceTimeTalkDriver(params: {
     config: {
       deviceName: params.config.audio.blackholeDeviceUid,
       sampleRateHz: params.config.audio.sampleRateHz,
+      outputChannels: params.config.audio.outputChannels,
+      outputGain: params.config.audio.outputGain,
     },
     logger: params.logger,
     onInputAudio(audio) {

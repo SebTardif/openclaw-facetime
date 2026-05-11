@@ -486,6 +486,8 @@ export async function createFaceTimeRuntime(params: {
           {
             deviceName: config.audio.blackholeDeviceUid,
             sampleRateHz: config.audio.sampleRateHz,
+            outputChannels: config.audio.outputChannels,
+            outputGain: config.audio.outputGain,
             phrase: testParams?.phrase,
           },
         );

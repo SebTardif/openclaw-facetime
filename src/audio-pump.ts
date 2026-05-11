@@ -32,6 +32,8 @@ export type FaceTimeAudioPumpConfig = {
   deviceName: string;
   sampleRateHz: number;
   bufferBytes?: number;
+  outputChannels?: number;
+  outputGain?: number;
 };
 
 export type FaceTimeAudioPump = {
@@ -65,7 +67,15 @@ function soxInputCommand(config: FaceTimeAudioPumpConfig): string[] {
 }
 
 function soxOutputCommand(config: FaceTimeAudioPumpConfig): string[] {
-  return [
+  const outputChannels =
+    Number.isInteger(config.outputChannels) && (config.outputChannels ?? 0) > 0
+      ? String(config.outputChannels)
+      : "16";
+  const outputGain =
+    typeof config.outputGain === "number" && Number.isFinite(config.outputGain)
+      ? config.outputGain
+      : 3;
+  const command = [
     SOX_COMMAND,
     "-q",
     "--buffer",
@@ -82,10 +92,16 @@ function soxOutputCommand(config: FaceTimeAudioPumpConfig): string[] {
     "16",
     "-L",
     "-",
+    "-c",
+    outputChannels,
     "-t",
     "coreaudio",
     config.deviceName,
   ];
+  if (outputGain !== 1) {
+    command.push("gain", "-n", String(outputGain));
+  }
+  return command;
 }
 
 function splitCommand(argv: string[]): { command: string; args: string[] } {

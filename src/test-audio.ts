@@ -56,6 +56,8 @@ export async function playFaceTimeTestAudio(
   params: {
     deviceName: string;
     sampleRateHz: number;
+    outputChannels?: number;
+    outputGain?: number;
     phrase?: unknown;
   },
 ) {
@@ -83,7 +85,12 @@ export async function playFaceTimeTestAudio(
     const pcm = await (deps.readFile ?? readFile)(rawPath);
     const startPump = deps.startPump ?? startFaceTimeAudioPump;
     const pump: FaceTimeAudioPump = startPump({
-      config: { deviceName: params.deviceName, sampleRateHz: params.sampleRateHz },
+      config: {
+        deviceName: params.deviceName,
+        sampleRateHz: params.sampleRateHz,
+        outputChannels: params.outputChannels,
+        outputGain: params.outputGain,
+      },
       logger: deps.logger ?? console,
       onInputAudio() {},
     });

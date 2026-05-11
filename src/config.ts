@@ -16,6 +16,8 @@ export type FaceTimeConfig = {
     blackholeDeviceUid: string;
     sampleRateHz: number;
     saveAndRestoreDefaults: boolean;
+    outputChannels: number;
+    outputGain: number;
   };
   realtime: {
     provider: string;
@@ -79,6 +81,16 @@ function resolvePositiveInteger(value: unknown, fallback: number): number {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+function resolvePositiveNumber(value: unknown, fallback: number): number {
+  const parsed =
+    typeof value === "number"
+      ? value
+      : typeof value === "string" && value.trim()
+        ? Number(value)
+        : fallback;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
 function resolveStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) {
     return [];
@@ -135,6 +147,8 @@ export function resolveFaceTimeConfig(input: unknown): FaceTimeConfig {
         "BlackHole 16ch",
       sampleRateHz: resolvePositiveInteger(audio.sampleRateHz, DEFAULT_SAMPLE_RATE_HZ),
       saveAndRestoreDefaults: resolveBoolean(audio.saveAndRestoreDefaults, true),
+      outputChannels: resolvePositiveInteger(audio.outputChannels, 16),
+      outputGain: resolvePositiveNumber(audio.outputGain, 3),
     },
     realtime: {
       provider: normalizeOptionalString(realtime.provider) ?? "openai",

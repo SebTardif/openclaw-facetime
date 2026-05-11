@@ -70,6 +70,7 @@ describe("FaceTime audio pump", () => {
     ]);
     expect(spawn.mock.calls[0]?.[2]).toEqual({ stdio: ["ignore", "pipe", "pipe"] });
     expect(spawn.mock.calls[1]?.[1]).toContain("BlackHole 16ch");
+    expect(spawn.mock.calls[1]?.[1]).toContain("gain");
     expect(spawn.mock.calls[1]?.[2]).toEqual({ stdio: ["pipe", "ignore", "pipe"] });
 
     processes[0]?.stdout.emit("data", Buffer.from([1, 2, 3]));

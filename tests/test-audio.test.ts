@@ -38,7 +38,12 @@ describe("FaceTime test audio", () => {
     ]);
     expect(readFile).toHaveBeenCalledWith(calls[1]?.[14]);
     expect(startPump).toHaveBeenCalledWith({
-      config: { deviceName: "BlackHole 16ch", sampleRateHz: 24000 },
+      config: {
+        deviceName: "BlackHole 16ch",
+        sampleRateHz: 24000,
+        outputChannels: undefined,
+        outputGain: undefined,
+      },
       logger: console,
       onInputAudio: expect.any(Function),
     });
