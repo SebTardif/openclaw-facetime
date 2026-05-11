@@ -47,8 +47,11 @@ describe("FaceTime audio pump", () => {
       spawn,
     });
 
-    expect(spawn).toHaveBeenCalledTimes(2);
-    expect(spawn.mock.calls[0]?.[1]).toEqual([
+    expect(spawn).toHaveBeenCalledTimes(3);
+    expect(spawn.mock.calls[0]?.[0]).toBe("/usr/bin/caffeinate");
+    expect(spawn.mock.calls[0]?.[1]).toEqual(["-d", "-i"]);
+    expect(spawn.mock.calls[0]?.[2]).toEqual({ stdio: ["ignore", "ignore", "pipe"] });
+    expect(spawn.mock.calls[1]?.[1]).toEqual([
       "-q",
       "--buffer",
       "2048",
@@ -68,13 +71,13 @@ describe("FaceTime audio pump", () => {
       "-L",
       "-",
     ]);
-    expect(spawn.mock.calls[0]?.[2]).toEqual({ stdio: ["ignore", "pipe", "pipe"] });
-    expect(spawn.mock.calls[1]?.[1]).toContain("BlackHole 16ch");
-    expect(spawn.mock.calls[1]?.[1]).toContain("gain");
-    expect(spawn.mock.calls[1]?.[2]).toEqual({ stdio: ["pipe", "ignore", "pipe"] });
+    expect(spawn.mock.calls[1]?.[2]).toEqual({ stdio: ["ignore", "pipe", "pipe"] });
+    expect(spawn.mock.calls[2]?.[1]).toContain("BlackHole 16ch");
+    expect(spawn.mock.calls[2]?.[1]).toContain("gain");
+    expect(spawn.mock.calls[2]?.[2]).toEqual({ stdio: ["pipe", "ignore", "pipe"] });
 
-    processes[0]?.stdout.emit("data", Buffer.from([1, 2, 3]));
-    processes[0]?.stdout.emit("data", Buffer.alloc(0));
+    processes[1]?.stdout.emit("data", Buffer.from([1, 2, 3]));
+    processes[1]?.stdout.emit("data", Buffer.alloc(0));
 
     expect(onInputAudio).toHaveBeenCalledTimes(1);
     expect(onInputAudio).toHaveBeenCalledWith(Buffer.from([1, 2, 3]));
@@ -96,19 +99,21 @@ describe("FaceTime audio pump", () => {
         spawn,
       });
 
-      const firstOutput = processes[1];
+      const firstOutput = processes[2];
       pump.writeOutputAudio(Buffer.from([4, 5, 6]));
       expect(firstOutput?.stdin.writes).toEqual([Buffer.from([4, 5, 6])]);
 
       pump.clearOutputAudio();
-      expect(spawn).toHaveBeenCalledTimes(3);
+      expect(spawn).toHaveBeenCalledTimes(4);
       expect(firstOutput?.kills).toEqual(["SIGKILL"]);
 
-      const input = processes[0];
-      const secondOutput = processes[2];
+      const wake = processes[0];
+      const input = processes[1];
+      const secondOutput = processes[3];
       const stopPromise = pump.stop();
       await vi.advanceTimersByTimeAsync(2000);
       await stopPromise;
+      expect(wake?.kills).toEqual(["SIGTERM", "SIGKILL"]);
       expect(input?.kills).toEqual(["SIGTERM", "SIGKILL"]);
       expect(secondOutput?.kills).toEqual(["SIGTERM", "SIGKILL"]);
       expect(input?.stdin.ended).toBe(true);

@@ -98,6 +98,7 @@ fi
 tmp="$(mktemp -t openclaw-facetime-loopback.XXXXXX.raw)"
 cleanup() { rm -f "$tmp"; }
 trap cleanup EXIT
+if [[ -x /usr/bin/caffeinate ]]; then /usr/bin/caffeinate -u -t 8 >/dev/null 2>&1 & fi
 "$sox" -q -t coreaudio ${device} -t raw -r 48000 -c 1 -e signed-integer -b 16 -L "$tmp" trim 0 3 &
 recpid=$!
 sleep 0.3
@@ -138,6 +139,7 @@ capture="$(mktemp -t openclaw-facetime-pcm-loopback-capture.XXXXXX.raw)"
 source="$(mktemp -t openclaw-facetime-pcm-loopback-source.XXXXXX.raw)"
 cleanup() { rm -f "$capture" "$source"; }
 trap cleanup EXIT
+if [[ -x /usr/bin/caffeinate ]]; then /usr/bin/caffeinate -u -t 8 >/dev/null 2>&1 & fi
 "$sox" -q -n -t raw -r 24000 -c 1 -e signed-integer -b 16 -L "$source" synth 2 sine 880 vol 0.9
 "$sox" -q -t coreaudio ${device} -t raw -r 48000 -c 1 -e signed-integer -b 16 -L "$capture" trim 0 3 &
 recpid=$!

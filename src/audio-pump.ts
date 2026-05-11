@@ -27,6 +27,7 @@ type SpawnFn = (
 const SOX_COMMAND = ["/opt/homebrew/bin/sox", "/usr/local/bin/sox"].find((path) =>
   existsSync(path),
 ) ?? "sox";
+const CAFFEINATE_COMMAND = "/usr/bin/caffeinate";
 
 export type FaceTimeAudioPumpConfig = {
   deviceName: string;
@@ -172,6 +173,9 @@ export function startFaceTimeAudioPump(params: {
   const output = splitCommand(soxOutputCommand(params.config));
   const spawnOutput = () =>
     spawnFn(output.command, output.args, { stdio: ["pipe", "ignore", "pipe"] });
+  const wakeProcess = existsSync(CAFFEINATE_COMMAND)
+    ? spawnFn(CAFFEINATE_COMMAND, ["-d", "-i"], { stdio: ["ignore", "ignore", "pipe"] })
+    : undefined;
   const inputProcess = spawnFn(input.command, input.args, { stdio: ["ignore", "pipe", "pipe"] });
   let outputProcess = spawnOutput();
   let stopped = false;
@@ -211,8 +215,26 @@ export function startFaceTimeAudioPump(params: {
       return;
     }
     stopped = true;
-      await Promise.all([terminateProcess(inputProcess), terminateProcess(outputProcess)]);
+    await Promise.all([
+      terminateProcess(inputProcess),
+      terminateProcess(outputProcess),
+      wakeProcess ? terminateProcess(wakeProcess) : Promise.resolve(),
+    ]);
   };
+
+  wakeProcess?.on("error", (error) => {
+    params.logger.debug?.(`[facetime] caffeinate command failed: ${formatErrorMessage(error)}`);
+  });
+  wakeProcess?.on("exit", (code, signal) => {
+    if (!stopped) {
+      params.logger.debug?.(
+        `[facetime] caffeinate command exited (${code ?? signal ?? "done"})`,
+      );
+    }
+  });
+  wakeProcess?.stderr?.on("data", (chunk) => {
+    params.logger.debug?.(`[facetime] caffeinate: ${String(chunk).trim()}`);
+  });
 
   inputProcess.on("error", fail("audio input command"));
   inputProcess.on("exit", (code, signal) => {
