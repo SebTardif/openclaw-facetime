@@ -71,8 +71,16 @@ describe("FaceTime helper RPC", () => {
     });
     expect(typeof payload.transactionId).toBe("string");
 
-    client.write(`${JSON.stringify({ transactionId: payload.transactionId })}\r\n`);
-    await expect(actionPromise).resolves.toBeUndefined();
+    client.write(
+      `${JSON.stringify({
+        transactionId: payload.transactionId,
+        conversation_audio_started: true,
+      })}\r\n`,
+    );
+    await expect(actionPromise).resolves.toMatchObject({
+      transactionId: payload.transactionId,
+      conversation_audio_started: true,
+    });
   });
 
   it("sends leave-call actions over newline-framed JSON", async () => {
@@ -108,7 +116,9 @@ describe("FaceTime helper RPC", () => {
     });
 
     client.write(`${JSON.stringify({ transactionId: payload.transactionId })}\r\n`);
-    await expect(actionPromise).resolves.toBeUndefined();
+    await expect(actionPromise).resolves.toMatchObject({
+      transactionId: payload.transactionId,
+    });
   });
 
   it("notifies when the last helper socket disconnects", async () => {

@@ -11,8 +11,10 @@ type HelperSocketServerParams = {
   onDisconnect?: () => void;
 };
 
+export type HelperActionResult = Record<string, unknown>;
+
 type PendingRpc = {
-  resolve: () => void;
+  resolve: (result: HelperActionResult) => void;
   reject: (error: Error) => void;
   timeout: ReturnType<typeof setTimeout>;
 };
@@ -68,20 +70,20 @@ export class FaceTimeHelperSocketServer {
     this.#started = false;
   }
 
-  async answerCall(callUUID: string): Promise<void> {
-    await this.#sendAction("answer-call", { callUUID });
+  async answerCall(callUUID: string): Promise<HelperActionResult> {
+    return await this.#sendAction("answer-call", { callUUID });
   }
 
-  async leaveCall(callUUID: string): Promise<void> {
-    await this.#sendAction("leave-call", { callUUID });
+  async leaveCall(callUUID: string): Promise<HelperActionResult> {
+    return await this.#sendAction("leave-call", { callUUID });
   }
 
-  async setMuted(callUUID: string, muted: boolean): Promise<void> {
-    await this.#sendAction("set-muted", { callUUID, muted });
+  async setMuted(callUUID: string, muted: boolean): Promise<HelperActionResult> {
+    return await this.#sendAction("set-muted", { callUUID, muted });
   }
 
-  async startTransmission(callUUID: string): Promise<void> {
-    await this.#sendAction("start-transmission", { callUUID });
+  async startTransmission(callUUID: string): Promise<HelperActionResult> {
+    return await this.#sendAction("start-transmission", { callUUID });
   }
 
   get connectedSockets(): number {
@@ -135,7 +137,7 @@ export class FaceTimeHelperSocketServer {
         if (typeof record.error === "string" && record.error) {
           pending.reject(new Error(record.error));
         } else {
-          pending.resolve();
+          pending.resolve(record);
         }
       }
       return;
@@ -143,14 +145,17 @@ export class FaceTimeHelperSocketServer {
     this.params.onMessage(parsed);
   }
 
-  async #sendAction(action: string, data: Record<string, unknown>): Promise<void> {
+  async #sendAction(
+    action: string,
+    data: Record<string, unknown>,
+  ): Promise<HelperActionResult> {
     const socket = [...this.#sockets].find((candidate) => !candidate.destroyed);
     if (!socket) {
       throw new Error("FaceTime helper is not connected to the facetime event socket");
     }
     const transactionId = randomUUID();
     const payload = JSON.stringify({ action, data, transactionId });
-    await new Promise<void>((resolve, reject) => {
+    return await new Promise<HelperActionResult>((resolve, reject) => {
       const timeout = setTimeout(() => {
         this.#pending.delete(transactionId);
         reject(new Error(`FaceTime helper action timed out: ${action}`));

@@ -19,7 +19,7 @@ import {
 import { resolveFaceTimeConfig, validateFaceTimeConfig, type FaceTimeConfig } from "./config.js";
 import { formatErrorMessage } from "./errors.js";
 import { prepareFaceTimeCallAudio } from "./facetime-ui.js";
-import { FaceTimeHelperSocketServer } from "./helper-rpc.js";
+import { FaceTimeHelperSocketServer, type HelperActionResult } from "./helper-rpc.js";
 import { runFaceTimePreflight, type FaceTimePreflightResult } from "./preflight.js";
 import { startFaceTimeTalkDriver, type FaceTimeTalkDriver } from "./talk-driver.js";
 import {
@@ -36,9 +36,12 @@ type ActiveFaceTimeCall = {
   isSendingTransmission?: boolean;
   isUplinkMuted?: boolean;
   isSendingVideo?: boolean;
+  conversationUUID?: string;
+  conversationGroupUUID?: string;
   audioDefaults?: AudioDefaultsSnapshot;
   audioRouted: boolean;
   audioDevices?: AudioDefaultsSnapshot;
+  lastHelperAction?: HelperActionResult;
   lastRoutingError?: string;
   talk?: FaceTimeTalkDriver;
   talkStarting?: Promise<void>;
@@ -57,9 +60,12 @@ export type FaceTimeRuntimeStatus = {
     isSendingTransmission?: boolean;
     isUplinkMuted?: boolean;
     isSendingVideo?: boolean;
+    conversationUUID?: string;
+    conversationGroupUUID?: string;
     realtimeActive: boolean;
     audioRouted: boolean;
     audioDevices?: AudioDefaultsSnapshot;
+    lastHelperAction?: HelperActionResult;
     lastRoutingError?: string;
     recentTalkEvents?: FaceTimeTalkEventSummary[];
   }>;
@@ -97,6 +103,14 @@ function updateCallStatus(call: ActiveFaceTimeCall, event: FaceTimeCallStatusEve
     typeof event.data.is_sending_video === "boolean"
       ? event.data.is_sending_video
       : call.isSendingVideo;
+  call.conversationUUID =
+    typeof event.data.conversation_uuid === "string"
+      ? event.data.conversation_uuid
+      : call.conversationUUID;
+  call.conversationGroupUUID =
+    typeof event.data.conversation_group_uuid === "string"
+      ? event.data.conversation_group_uuid
+      : call.conversationGroupUUID;
 }
 
 export async function createFaceTimeRuntime(params: {
@@ -171,16 +185,28 @@ export async function createFaceTimeRuntime(params: {
       throw error;
     }
     if (options.unmute) {
-      await helper.setMuted(call.callUUID, false).catch((error: Error) => {
+      try {
+        const result = await helper.setMuted(call.callUUID, false);
+        call.lastHelperAction = result;
+        params.logger.debug?.(
+          `[facetime] helper set-muted result ${call.callUUID}: ${JSON.stringify(result)}`,
+        );
+      } catch (error) {
         params.logger.warn(
           `[facetime] helper failed to unmute call ${call.callUUID}: ${formatErrorMessage(error)}`,
         );
-      });
-      await helper.startTransmission(call.callUUID).catch((error: Error) => {
+      }
+      try {
+        const result = await helper.startTransmission(call.callUUID);
+        call.lastHelperAction = result;
+        params.logger.debug?.(
+          `[facetime] helper start-transmission result ${call.callUUID}: ${JSON.stringify(result)}`,
+        );
+      } catch (error) {
         params.logger.warn(
           `[facetime] helper failed to start call transmission ${call.callUUID}: ${formatErrorMessage(error)}`,
         );
-      });
+      }
     }
     if (options.prepareFaceTimeUi) {
       await prepareFaceTimeCallAudio(
@@ -358,9 +384,12 @@ export async function createFaceTimeRuntime(params: {
           isSendingTransmission: call.isSendingTransmission,
           isUplinkMuted: call.isUplinkMuted,
           isSendingVideo: call.isSendingVideo,
+          conversationUUID: call.conversationUUID,
+          conversationGroupUUID: call.conversationGroupUUID,
           realtimeActive: Boolean(call.talk),
           audioRouted: call.audioRouted,
           audioDevices: call.audioDevices,
+          lastHelperAction: call.lastHelperAction,
           lastRoutingError: call.lastRoutingError,
           recentTalkEvents: call.talk
             ? summarizeRecentTalkEvents(call.talk.recentTalkEvents)
