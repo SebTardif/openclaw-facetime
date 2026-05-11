@@ -36,6 +36,7 @@ type ActiveFaceTimeCall = {
   audioDevices?: AudioDefaultsSnapshot;
   lastRoutingError?: string;
   talk?: FaceTimeTalkDriver;
+  talkStarting?: Promise<void>;
 };
 
 export type FaceTimeRuntimeStatus = {
@@ -220,10 +221,10 @@ export async function createFaceTimeRuntime(params: {
       call = { callUUID, handle: normalizeFaceTimeHandle(event.data.handle), audioRouted: false };
       calls.set(callUUID, call);
     }
-    if (call.talk) {
+    if (call.talk || call.talkStarting) {
       return;
     }
-    try {
+    call.talkStarting = (async () => {
       await routeCallAudio(call, {
         prepareFaceTimeUi: true,
         unmute: event.data.is_sending_audio === false,
@@ -236,11 +237,16 @@ export async function createFaceTimeRuntime(params: {
         callUUID,
       });
       params.logger.info(`[facetime] realtime talk session active: ${callUUID}`);
+    })();
+    try {
+      await call.talkStarting;
     } catch (error) {
       params.logger.warn(
         `[facetime] failed to start realtime talk for ${callUUID}: ${formatErrorMessage(error)}`,
       );
       await closeCall(callUUID, "talk-start-failed");
+    } finally {
+      call.talkStarting = undefined;
     }
   };
 

@@ -96,23 +96,35 @@ function splitCommand(argv: string[]): { command: string; args: string[] } {
   return { command, args };
 }
 
-function terminateProcess(proc: PumpProcess, signal: NodeJS.Signals = "SIGTERM") {
+async function terminateProcess(proc: PumpProcess, signal: NodeJS.Signals = "SIGTERM") {
   if (proc.killed && signal !== "SIGKILL") {
     return;
   }
   let exited = false;
-  proc.on("exit", () => {
-    exited = true;
+  const exitedPromise = new Promise<void>((resolve) => {
+    proc.on("exit", () => {
+      exited = true;
+      resolve();
+    });
   });
+  try {
+    proc.stdin?.end?.();
+  } catch {
+    // The process may already have closed stdin.
+  }
   try {
     proc.kill(signal);
   } catch {
     return;
   }
-  if (signal === "SIGKILL") {
-    return;
-  }
-  const timer = setTimeout(() => {
+  if (signal !== "SIGKILL") {
+    await Promise.race([
+      exitedPromise,
+      new Promise<void>((resolve) => {
+        const timer = setTimeout(resolve, 1000);
+        timer.unref?.();
+      }),
+    ]);
     if (!exited) {
       try {
         proc.kill("SIGKILL");
@@ -120,8 +132,14 @@ function terminateProcess(proc: PumpProcess, signal: NodeJS.Signals = "SIGTERM")
         // Process may have exited after the grace check.
       }
     }
-  }, 1000);
-  timer.unref?.();
+  }
+  await Promise.race([
+    exitedPromise,
+    new Promise<void>((resolve) => {
+      const timer = setTimeout(resolve, 1000);
+      timer.unref?.();
+    }),
+  ]);
 }
 
 export function startFaceTimeAudioPump(params: {
@@ -177,8 +195,7 @@ export function startFaceTimeAudioPump(params: {
       return;
     }
     stopped = true;
-    terminateProcess(inputProcess);
-    terminateProcess(outputProcess);
+      await Promise.all([terminateProcess(inputProcess), terminateProcess(outputProcess)]);
   };
 
   inputProcess.on("error", fail("audio input command"));
@@ -218,7 +235,7 @@ export function startFaceTimeAudioPump(params: {
       const previous = outputProcess;
       outputProcess = spawnOutput();
       attachOutputHandlers(outputProcess);
-      terminateProcess(previous, "SIGKILL");
+      void terminateProcess(previous, "SIGKILL");
     },
     stop,
   };

@@ -4,10 +4,15 @@ import { startFaceTimeAudioPump } from "../src/audio-pump.js";
 
 class FakePipe extends EventEmitter {
   writes: Buffer[] = [];
+  ended = false;
 
   write(chunk: Buffer) {
     this.writes.push(chunk);
     return true;
+  }
+
+  end() {
+    this.ended = true;
   }
 }
 
@@ -100,13 +105,13 @@ describe("FaceTime audio pump", () => {
 
       const input = processes[0];
       const secondOutput = processes[2];
-      await pump.stop();
-      expect(input?.kills).toEqual(["SIGTERM"]);
-      expect(secondOutput?.kills).toEqual(["SIGTERM"]);
-
-      vi.advanceTimersByTime(1000);
+      const stopPromise = pump.stop();
+      await vi.advanceTimersByTimeAsync(2000);
+      await stopPromise;
       expect(input?.kills).toEqual(["SIGTERM", "SIGKILL"]);
       expect(secondOutput?.kills).toEqual(["SIGTERM", "SIGKILL"]);
+      expect(input?.stdin.ended).toBe(true);
+      expect(secondOutput?.stdin.ended).toBe(true);
 
       pump.writeOutputAudio(Buffer.from([7]));
       expect(secondOutput?.stdin.writes).toEqual([]);

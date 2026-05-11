@@ -34,6 +34,7 @@ const CONSULT_SYSTEM_PROMPT = [
   "Act on behalf of Omar with normal memory and tool access.",
   "Return a concise, speakable answer suitable for realtime TTS.",
 ].join(" ");
+const INPUT_AUDIO_STATUS_INTERVAL_MS = 1000;
 
 function pushRecent(events: TalkEvent[], event: TalkEvent | undefined): void {
   if (!event) {
@@ -116,6 +117,7 @@ export async function startFaceTimeTalkDriver(params: {
   let stopped = false;
   let bridge: RealtimeVoiceBridgeSession | undefined;
   let pump: FaceTimeAudioPump | undefined;
+  let lastInputAudioStatusAt = 0;
 
   const remember = (input: TalkEventInput) => pushRecent(recentTalkEvents, talk.emit(input));
   const ensureTurn = () => {
@@ -219,11 +221,15 @@ export async function startFaceTimeTalkDriver(params: {
       if (stopped) {
         return;
       }
-      remember({
-        type: "input.audio.delta",
-        turnId: ensureTurn(),
-        payload: { byteLength: audio.byteLength },
-      });
+      const now = Date.now();
+      if (now - lastInputAudioStatusAt >= INPUT_AUDIO_STATUS_INTERVAL_MS) {
+        lastInputAudioStatusAt = now;
+        remember({
+          type: "input.audio.delta",
+          turnId: ensureTurn(),
+          payload: { byteLength: audio.byteLength },
+        });
+      }
       bridge?.sendAudio(audio);
     },
     onError(error) {
@@ -295,6 +301,15 @@ export async function startFaceTimeTalkDriver(params: {
       }
     },
     onEvent(event) {
+      if (!(event.direction === "client" && event.type === "input_audio_buffer.append")) {
+        remember({
+          type: "health.changed",
+          payload: {
+            name: `${event.direction}:${event.type}`,
+            message: event.detail,
+          },
+        });
+      }
       if (event.type === "input_audio_buffer.speech_started") {
         bridge?.handleBargeIn({ audioPlaybackActive: talk.outputAudioActive });
         if (talk.outputAudioActive) {
