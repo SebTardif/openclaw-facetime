@@ -37,7 +37,22 @@ while [[ $# -gt 0 ]]; do
 done
 
 echo "== FaceTime preflight =="
-openclaw gateway call facetime.preflight --json --timeout 20000
+preflight_json="$(openclaw gateway call facetime.preflight --json --timeout 20000)"
+printf '%s\n' "$preflight_json"
+node -e '
+  const fs = require("node:fs");
+  const preflight = JSON.parse(fs.readFileSync(0, "utf8"));
+  if (preflight && preflight.ok === true) {
+    process.exit(0);
+  }
+  const failed = Array.isArray(preflight.checks)
+    ? preflight.checks
+        .filter((check) => check && check.required !== false && check.ok !== true)
+        .map((check) => `${check.id || "unknown"}: ${check.message || "failed"}`)
+    : [];
+  console.error(`Preflight failed${failed.length ? `: ${failed.join("; ")}` : "."}`);
+  process.exit(1);
+' <<<"$preflight_json"
 
 echo
 echo "== FaceTime status =="

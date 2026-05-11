@@ -65,6 +65,23 @@ read_status() {
   gateway_call facetime.status
 }
 
+require_preflight_ok() {
+  node -e '
+    const fs = require("node:fs");
+    const preflight = JSON.parse(fs.readFileSync(0, "utf8"));
+    if (preflight && preflight.ok === true) {
+      process.exit(0);
+    }
+    const failed = Array.isArray(preflight.checks)
+      ? preflight.checks
+          .filter((check) => check && check.required !== false && check.ok !== true)
+          .map((check) => `${check.id || "unknown"}: ${check.message || "failed"}`)
+      : [];
+    console.error(`Preflight failed${failed.length ? `: ${failed.join("; ")}` : "."}`);
+    process.exit(1);
+  '
+}
+
 status_has_call() {
   node -e '
     const fs = require("node:fs");
@@ -145,7 +162,9 @@ require_yes() {
 echo "Log: $log_file"
 echo
 echo "== Preflight =="
-gateway_call facetime.preflight
+preflight_json="$(gateway_call facetime.preflight)"
+printf '%s\n' "$preflight_json"
+require_preflight_ok <<<"$preflight_json"
 
 echo
 echo "== Initial status =="
