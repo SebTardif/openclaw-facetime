@@ -17,6 +17,7 @@ describe("FaceTime preflight", () => {
       .mockResolvedValueOnce({ code: 0, stdout: "Mac Mic\nBlackHole 16ch\n", stderr: "" })
       .mockResolvedValueOnce({ code: 0, stdout: "Mac Speakers\nBlackHole 16ch\n", stderr: "" })
       .mockResolvedValueOnce({ code: 0, stdout: "sox: SoX v14.4.2\n", stderr: "" })
+      .mockResolvedValueOnce({ code: 0, stdout: "loopback rms=0.42\n", stderr: "" })
       .mockResolvedValueOnce({ code: 0, stdout: "123\n", stderr: "" });
 
     const result = await runFaceTimePreflight({
@@ -40,6 +41,7 @@ describe("FaceTime preflight", () => {
       ["blackhole-input", true],
       ["blackhole-output", true],
       ["sox", true],
+      ["blackhole-loopback", true],
       ["facetime-running", true],
       ["realtime-provider", true],
     ]);
@@ -55,6 +57,7 @@ describe("FaceTime preflight", () => {
       .mockResolvedValueOnce({ code: 127, stdout: "", stderr: "ENOENT" })
       .mockResolvedValueOnce({ code: 127, stdout: "", stderr: "ENOENT" })
       .mockResolvedValueOnce({ code: 127, stdout: "", stderr: "ENOENT" })
+      .mockResolvedValueOnce({ code: 1, stdout: "", stderr: "RMS     amplitude:     0.000015" })
       .mockResolvedValueOnce({ code: 1, stdout: "", stderr: "" });
 
     const result = await runFaceTimePreflight({
@@ -70,6 +73,7 @@ describe("FaceTime preflight", () => {
       "blackhole-input",
       "blackhole-output",
       "sox",
+      "blackhole-loopback",
       "facetime-running",
       "realtime-provider",
     ]);

@@ -34,6 +34,10 @@ function firstLine(value: unknown) {
   return `${value ?? ""}`.trim().split(/\r?\n/)[0] || undefined;
 }
 
+function shellSingleQuote(value: string) {
+  return `'${value.replaceAll("'", "'\\''")}'`;
+}
+
 function pushCheck(
   checks: FaceTimePreflightCheck[],
   check: Omit<FaceTimePreflightCheck, "required"> & { required?: boolean },
@@ -76,6 +80,45 @@ async function checkCommandCandidates(params: {
     ok: false,
     required: params.required,
     message: lastMessage,
+  });
+}
+
+async function checkBlackHoleLoopback(params: {
+  runCommandWithTimeout: RunCommandWithTimeout;
+  checks: FaceTimePreflightCheck[];
+  deviceName: string;
+}) {
+  const device = shellSingleQuote(params.deviceName);
+  const script = `
+set -euo pipefail
+if [[ -x /opt/homebrew/bin/sox ]]; then sox=/opt/homebrew/bin/sox
+elif [[ -x /usr/local/bin/sox ]]; then sox=/usr/local/bin/sox
+else sox=sox
+fi
+tmp="$(mktemp -t openclaw-facetime-loopback.XXXXXX.raw)"
+cleanup() { rm -f "$tmp"; }
+trap cleanup EXIT
+"$sox" -q -t coreaudio ${device} -t raw -r 48000 -c 1 -e signed-integer -b 16 -L "$tmp" trim 0 3 &
+recpid=$!
+sleep 0.3
+"$sox" -q -n -t coreaudio ${device} synth 2 sine 880 vol 0.9
+wait "$recpid" || true
+stat="$("$sox" -q -t raw -r 48000 -c 1 -e signed-integer -b 16 -L "$tmp" -n stat 2>&1)"
+rms="$(printf "%s\\n" "$stat" | awk '/RMS[[:space:]]+amplitude/ { print $3; exit }')"
+node -e 'const rms=Number(process.argv[1]); if (!Number.isFinite(rms) || rms < 0.005) process.exit(1)' "$rms"
+printf 'loopback rms=%s\\n' "$rms"
+`;
+  const result = await params.runCommandWithTimeout(["/bin/bash", "-lc", script], {
+    timeoutMs: 10_000,
+  });
+  pushCheck(params.checks, {
+    id: "blackhole-loopback",
+    label: "BlackHole loopback audio",
+    ok: result.code === 0,
+    message:
+      firstLine(result.stdout) ??
+      firstLine(result.stderr) ??
+      `no loopback signal detected on ${params.deviceName}`,
   });
 }
 
@@ -165,6 +208,12 @@ export async function runFaceTimePreflight(params: {
     label: "SoX command",
     candidates: ["/opt/homebrew/bin/sox", "/usr/local/bin/sox", "sox"],
     args: ["--version"],
+  });
+
+  await checkBlackHoleLoopback({
+    runCommandWithTimeout: params.runtime.system.runCommandWithTimeout,
+    checks,
+    deviceName: params.config.audio.blackholeDeviceUid,
   });
 
   await checkCommandCandidates({
