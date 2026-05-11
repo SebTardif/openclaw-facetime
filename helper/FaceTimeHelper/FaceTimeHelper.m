@@ -143,7 +143,9 @@ FACETIMEHELPER *plugin;
         @"ended_reason": [call endedReasonString] ?: [NSNull null],
         @"handle": [[call handle] dictionaryRepresentation] ?: [NSNull null],
         @"is_sending_audio": [NSNumber numberWithBool:[call isSendingAudio]] ?: [NSNull null],
+        @"is_sending_transmission": [NSNumber numberWithBool:[call isSendingTransmission]] ?: [NSNull null],
         @"is_sending_video": [NSNumber numberWithBool:[call isSendingVideo]] ?: [NSNull null],
+        @"is_uplink_muted": [NSNumber numberWithBool:[call isUplinkMuted]] ?: [NSNull null],
         @"is_outgoing": [NSNumber numberWithBool:[call isOutgoing]] ?: [NSNull null],
     };
     NSDictionary *message = @{@"event": @"ft-call-status-changed", @"data": data};
@@ -249,12 +251,36 @@ FACETIMEHELPER *plugin;
         
         BOOL muted = [data[@"muted"] boolValue];
         BOOL didSetMuted = [call setMuted:muted];
+        [call setUplinkMuted:muted];
         if (transaction != nil) {
             [controller sendMessage: @{
                 @"transactionId": transaction,
                 @"muted": [NSNumber numberWithBool:[call isMuted]],
                 @"is_sending_audio": [NSNumber numberWithBool:[call isSendingAudio]],
+                @"is_sending_transmission": [NSNumber numberWithBool:[call isSendingTransmission]],
+                @"is_uplink_muted": [NSNumber numberWithBool:[call isUplinkMuted]],
                 @"ok": [NSNumber numberWithBool:didSetMuted],
+            }];
+        }
+    } else if ([event isEqualToString:@"start-transmission"]) {
+        TUCall *call = [[TUCallCenter sharedInstance] callWithCallUUID:(data[@"callUUID"])];
+        
+        if (call == nil) {
+            if (transaction != nil) {
+                [controller sendMessage: @{@"transactionId": transaction, @"error": @"Call not found!"}];
+            }
+            return;
+        }
+        
+        [call setUplinkMuted:NO];
+        [[TUCallCenter sharedInstance] startTransmissionForBargeCall:call sourceIsHandsfreeAccessory:NO];
+        if (transaction != nil) {
+            [controller sendMessage: @{
+                @"transactionId": transaction,
+                @"muted": [NSNumber numberWithBool:[call isMuted]],
+                @"is_sending_audio": [NSNumber numberWithBool:[call isSendingAudio]],
+                @"is_sending_transmission": [NSNumber numberWithBool:[call isSendingTransmission]],
+                @"is_uplink_muted": [NSNumber numberWithBool:[call isUplinkMuted]],
             }];
         }
     } else if ([event isEqualToString:@"generate-link"]) {

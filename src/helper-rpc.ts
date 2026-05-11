@@ -80,6 +80,10 @@ export class FaceTimeHelperSocketServer {
     await this.#sendAction("set-muted", { callUUID, muted });
   }
 
+  async startTransmission(callUUID: string): Promise<void> {
+    await this.#sendAction("start-transmission", { callUUID });
+  }
+
   get connectedSockets(): number {
     return this.#sockets.size;
   }

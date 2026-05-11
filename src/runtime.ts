@@ -145,6 +145,11 @@ export async function createFaceTimeRuntime(params: {
           `[facetime] helper failed to unmute call ${call.callUUID}: ${formatErrorMessage(error)}`,
         );
       });
+      await helper.startTransmission(call.callUUID).catch((error: Error) => {
+        params.logger.warn(
+          `[facetime] helper failed to start call transmission ${call.callUUID}: ${formatErrorMessage(error)}`,
+        );
+      });
     }
     if (options.prepareFaceTimeUi) {
       await prepareFaceTimeCallAudio(
