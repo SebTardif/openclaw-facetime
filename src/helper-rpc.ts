@@ -8,6 +8,7 @@ type HelperSocketServerParams = {
   port: number;
   logger: RuntimeLogger;
   onMessage: (message: unknown) => void;
+  onDisconnect?: () => void;
 };
 
 type PendingRpc = {
@@ -106,6 +107,9 @@ export class FaceTimeHelperSocketServer {
     });
     socket.on("close", () => {
       this.#sockets.delete(socket);
+      if (this.#sockets.size === 0) {
+        this.params.onDisconnect?.();
+      }
     });
   }
 

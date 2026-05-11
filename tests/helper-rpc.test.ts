@@ -110,4 +110,27 @@ describe("FaceTime helper RPC", () => {
     client.write(`${JSON.stringify({ transactionId: payload.transactionId })}\r\n`);
     await expect(actionPromise).resolves.toBeUndefined();
   });
+
+  it("notifies when the last helper socket disconnects", async () => {
+    const port = await reservePort();
+    let disconnects = 0;
+    helper = new FaceTimeHelperSocketServer({
+      host: "127.0.0.1",
+      port,
+      logger: console,
+      onMessage: () => undefined,
+      onDisconnect: () => {
+        disconnects += 1;
+      },
+    });
+    await helper.start();
+
+    client = net.createConnection({ host: "127.0.0.1", port });
+    await new Promise<void>((resolve) => client?.once("connect", resolve));
+    await waitFor(() => helper?.connectedSockets === 1);
+
+    client.destroy();
+    await waitFor(() => disconnects === 1);
+    expect(helper.connectedSockets).toBe(0);
+  });
 });

@@ -94,6 +94,15 @@ export async function createFaceTimeRuntime(params: {
         void handleCallEvent(event);
       }
     },
+    onDisconnect() {
+      if (stopping || calls.size === 0) {
+        return;
+      }
+      params.logger.info("[facetime] helper disconnected; closing active FaceTime sessions");
+      for (const callUUID of [...calls.keys()]) {
+        void closeCall(callUUID, "helper-disconnected");
+      }
+    },
   });
 
   const restoreCallAudio = async (call: ActiveFaceTimeCall) => {

@@ -123,13 +123,16 @@ FACETIMEHELPER *plugin;
 
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(callStatusChanged:) name:@"TUCallCenterVideoCallStatusChangedNotification" object:nil];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(callStatusChanged:) name:@"TUCallCenterCallStatusChangedNotification" object:nil];
+        [self pollCallStatuses];
         
         // [self handleMessage:controller message:@"{\"action\":\"invalidate-link\",\"transactionId\":\"bruh\",\"data\":{\"url\":\"https://facetime.apple.com/join#v=1&p=5rYoTVvAEe6LSjJziwUUiw&k=h9yNjziqokL3lLK-JEq-1_uae-KCvqKvayGsrkdNmGg\"}}"];
     });
 }
 
--(void) callStatusChanged: (NSNotification *)notification {
-    TUProxyCall *call = [notification object];
+-(void) emitCallStatus:(id)call {
+    if (call == nil || ![call respondsToSelector:@selector(callUUID)] || ![call respondsToSelector:@selector(callStatus)]) {
+        return;
+    }
     NSDictionary *data = @{
         @"audio_mode": [call audioMode] ?: [NSNull null],
         @"call_status": [NSNumber numberWithInt:[call callStatus]] ?: [NSNull null],
@@ -145,6 +148,40 @@ FACETIMEHELPER *plugin;
     };
     NSDictionary *message = @{@"event": @"ft-call-status-changed", @"data": data};
     [[NetworkController sharedInstance] sendMessage: message];
+}
+
+-(void) pollCallStatuses {
+    TUCallCenter *callCenter = [TUCallCenter sharedInstance];
+    NSMutableDictionary *callsByUUID = [NSMutableDictionary dictionary];
+    NSArray *callLists = @[
+        [callCenter currentCalls] ?: @[],
+        [callCenter incomingCalls] ?: @[],
+    ];
+    for (NSArray *callList in callLists) {
+        for (id call in callList) {
+            if ([call respondsToSelector:@selector(callUUID)] && [call callUUID] != nil) {
+                callsByUUID[[call callUUID]] = call;
+            }
+        }
+    }
+    id incomingCall = [callCenter incomingCall];
+    if (incomingCall != nil && [incomingCall respondsToSelector:@selector(callUUID)] && [incomingCall callUUID] != nil) {
+        callsByUUID[[incomingCall callUUID]] = incomingCall;
+    }
+    id incomingVideoCall = [callCenter incomingVideoCall];
+    if (incomingVideoCall != nil && [incomingVideoCall respondsToSelector:@selector(callUUID)] && [incomingVideoCall callUUID] != nil) {
+        callsByUUID[[incomingVideoCall callUUID]] = incomingVideoCall;
+    }
+    for (id callUUID in callsByUUID) {
+        [self emitCallStatus:callsByUUID[callUUID]];
+    }
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^(void){
+        [self pollCallStatuses];
+    });
+}
+
+-(void) callStatusChanged: (NSNotification *)notification {
+    [self emitCallStatus:[notification object]];
 }
 
 // Run when receiving a new message from the tcp socket
