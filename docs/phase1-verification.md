@@ -24,6 +24,7 @@ Required idle evidence:
 - FaceTime.app is running.
 - Current audio defaults are the real MacBook mic/speakers.
 - BlackHole is visible as both input and output.
+- BlackHole synth loopback and PCM pump-style loopback both pass with a nonzero RMS.
 - Realtime provider credentials resolve to `openai:gpt-realtime-2`.
 - `facetime.status` has `calls: []`.
 - No leftover `sox` processes.
@@ -40,13 +41,13 @@ Required idle evidence:
 | Whitelist includes Omar | Live config has `mailto:omar@shahine.com`, `omar@shahine.com`, `+12069106512` | Done |
 | Helper socket ingestion | `helperConnected: true` from `facetime.preflight` | Done |
 | Auto-answer wiring | `FaceTimeHelperSocketServer.answerCall`, incoming call handler in `src/runtime.ts` | Implemented, live verification pending |
-| Audio routing through BlackHole | `src/audio-routing.ts`, preflight checks BlackHole input/output | Implemented, live verification pending |
-| PCM pump | `src/audio-pump.ts`, tests cover spawn/write/clear/stop cleanup | Implemented, live verification pending |
+| Audio routing through BlackHole | `src/audio-routing.ts`, preflight checks BlackHole input/output and loopback audio | Implemented, live verification pending |
+| PCM pump | `src/audio-pump.ts`, PCM preflight loopback, tests cover wake guard/spawn/write/clear/stop cleanup | Implemented, live verification pending |
 | Realtime talk driver | `src/talk-driver.ts` uses OpenClaw realtime voice bridge with agent-consult | Implemented, live verification pending |
 | Barge-in handling | `src/talk-driver.ts` clears output on `input_audio_buffer.speech_started` | Implemented, live verification pending |
 | Operator hangup | `facetime.hangup`, helper `leave-call`, tests in `tests/helper-rpc.test.ts` | Done |
-| Preflight before live test | `facetime.preflight`, `scripts/live-smoke.sh` | Done |
-| Full live acceptance runner | `scripts/live-acceptance.sh` waits for a user-placed call and records the Phase 1 gates | Ready, live verification pending |
+| Preflight before live test | `facetime.preflight`, `scripts/live-smoke.sh` fail fast unless `ok: true` | Done |
+| Full live acceptance runner | `scripts/live-acceptance.sh` waits for a user-placed call, requires preflight success, and records the Phase 1 gates | Ready, live verification pending |
 | CI | `.github/workflows/ci.yml` runs `pnpm typecheck`, `pnpm test`, `bash -n scripts/*.sh`, and `pnpm build`; verify branch-tip success with `gh run list` | Done |
 | Idle task cleanup | `openclaw tasks list --status running` reports `0 queued`, `0 running`, `0 issues` | Done |
 

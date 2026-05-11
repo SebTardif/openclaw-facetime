@@ -113,7 +113,7 @@ Before placing a live call, run the preflight check:
 openclaw gateway call facetime.preflight --json
 ```
 
-`ok` must be `true`. The checks cover helper connection, current audio defaults, BlackHole input/output visibility, SoX, FaceTime.app, and realtime provider credentials.
+`ok` must be `true`. The checks cover helper connection, current audio defaults, BlackHole input/output visibility, BlackHole synth loopback, pump-style PCM loopback, SoX, FaceTime.app, and realtime provider credentials.
 
 The expected path is:
 
@@ -139,7 +139,7 @@ scripts/live-smoke.sh --test-audio
 scripts/live-smoke.sh --test-audio --hangup
 ```
 
-The script does not place calls. Run it with `--test-audio` only after the FaceTime call is connected.
+The script does not place calls and exits immediately if preflight returns `ok: false`. Run it with `--test-audio` only after the FaceTime call is connected.
 
 For the full Phase 1 acceptance pass with the user present:
 
@@ -147,9 +147,10 @@ For the full Phase 1 acceptance pass with the user present:
 scripts/live-acceptance.sh
 ```
 
-This script also does not place calls. It waits for the whitelisted iPhone call,
-checks that the active call is routed through BlackHole, sends test audio,
-captures realtime/tool-use/barge-in status snapshots, and saves a log under
+This script also does not place calls. It requires preflight success, waits for
+the whitelisted iPhone call, checks that the active call is routed through
+BlackHole, sends test audio, captures realtime/tool-use/barge-in status snapshots,
+and saves a log under
 `${TMPDIR:-/tmp}/openclaw-facetime-acceptance/`.
 
 To hang up the active FaceTime call from OpenClaw during testing:
