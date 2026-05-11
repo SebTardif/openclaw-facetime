@@ -38,6 +38,10 @@ type ActiveFaceTimeCall = {
   isSendingVideo?: boolean;
   conversationUUID?: string;
   conversationGroupUUID?: string;
+  conversationAudioEnabled?: boolean;
+  conversationVideoEnabled?: boolean;
+  conversationAVMode?: number;
+  conversationResolvedAudioVideoMode?: number;
   audioDefaults?: AudioDefaultsSnapshot;
   audioRouted: boolean;
   audioDevices?: AudioDefaultsSnapshot;
@@ -62,6 +66,10 @@ export type FaceTimeRuntimeStatus = {
     isSendingVideo?: boolean;
     conversationUUID?: string;
     conversationGroupUUID?: string;
+    conversationAudioEnabled?: boolean;
+    conversationVideoEnabled?: boolean;
+    conversationAVMode?: number;
+    conversationResolvedAudioVideoMode?: number;
     realtimeActive: boolean;
     audioRouted: boolean;
     audioDevices?: AudioDefaultsSnapshot;
@@ -111,6 +119,22 @@ function updateCallStatus(call: ActiveFaceTimeCall, event: FaceTimeCallStatusEve
     typeof event.data.conversation_group_uuid === "string"
       ? event.data.conversation_group_uuid
       : call.conversationGroupUUID;
+  call.conversationAudioEnabled =
+    typeof event.data.conversation_audio_enabled === "boolean"
+      ? event.data.conversation_audio_enabled
+      : call.conversationAudioEnabled;
+  call.conversationVideoEnabled =
+    typeof event.data.conversation_video_enabled === "boolean"
+      ? event.data.conversation_video_enabled
+      : call.conversationVideoEnabled;
+  call.conversationAVMode =
+    typeof event.data.conversation_av_mode === "number"
+      ? event.data.conversation_av_mode
+      : call.conversationAVMode;
+  call.conversationResolvedAudioVideoMode =
+    typeof event.data.conversation_resolved_audio_video_mode === "number"
+      ? event.data.conversation_resolved_audio_video_mode
+      : call.conversationResolvedAudioVideoMode;
 }
 
 export async function createFaceTimeRuntime(params: {
@@ -386,6 +410,10 @@ export async function createFaceTimeRuntime(params: {
           isSendingVideo: call.isSendingVideo,
           conversationUUID: call.conversationUUID,
           conversationGroupUUID: call.conversationGroupUUID,
+          conversationAudioEnabled: call.conversationAudioEnabled,
+          conversationVideoEnabled: call.conversationVideoEnabled,
+          conversationAVMode: call.conversationAVMode,
+          conversationResolvedAudioVideoMode: call.conversationResolvedAudioVideoMode,
           realtimeActive: Boolean(call.talk),
           audioRouted: call.audioRouted,
           audioDevices: call.audioDevices,

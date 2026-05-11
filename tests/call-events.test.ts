@@ -16,6 +16,10 @@ describe("FaceTime call events", () => {
         call_uuid: "call-1",
         conversation_uuid: "conversation-1",
         conversation_group_uuid: "group-1",
+        conversation_audio_enabled: true,
+        conversation_video_enabled: false,
+        conversation_av_mode: 1,
+        conversation_resolved_audio_video_mode: "1",
         call_status: 4,
         is_outgoing: false,
         is_sending_audio: true,
@@ -29,6 +33,10 @@ describe("FaceTime call events", () => {
     expect(event?.data.call_uuid).toBe("call-1");
     expect(event?.data.conversation_uuid).toBe("conversation-1");
     expect(event?.data.conversation_group_uuid).toBe("group-1");
+    expect(event?.data.conversation_audio_enabled).toBe(true);
+    expect(event?.data.conversation_video_enabled).toBe(false);
+    expect(event?.data.conversation_av_mode).toBe(1);
+    expect(event?.data.conversation_resolved_audio_video_mode).toBe(1);
     expect(event?.data.call_status).toBe(4);
     expect(event?.data.is_sending_audio).toBe(true);
     expect(event?.data.is_sending_transmission).toBe(true);

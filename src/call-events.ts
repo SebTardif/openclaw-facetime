@@ -9,6 +9,10 @@ export type FaceTimeCallStatusData = {
   call_uuid?: unknown;
   conversation_group_uuid?: unknown;
   conversation_uuid?: unknown;
+  conversation_audio_enabled?: unknown;
+  conversation_video_enabled?: unknown;
+  conversation_av_mode?: unknown;
+  conversation_resolved_audio_video_mode?: unknown;
   disconnected_reason?: unknown;
   ended_error?: unknown;
   ended_reason?: unknown;
@@ -95,6 +99,18 @@ export function normalizeFaceTimeCallEvent(value: unknown): FaceTimeCallStatusEv
   const callUUID = readString(data.call_uuid);
   const conversationUUID = readString(data.conversation_uuid);
   const conversationGroupUUID = readString(data.conversation_group_uuid);
+  const conversationAVMode =
+    typeof data.conversation_av_mode === "number"
+      ? data.conversation_av_mode
+      : typeof data.conversation_av_mode === "string"
+        ? Number(data.conversation_av_mode)
+        : undefined;
+  const conversationResolvedAVMode =
+    typeof data.conversation_resolved_audio_video_mode === "number"
+      ? data.conversation_resolved_audio_video_mode
+      : typeof data.conversation_resolved_audio_video_mode === "string"
+        ? Number(data.conversation_resolved_audio_video_mode)
+        : undefined;
   const status =
     typeof data.call_status === "number"
       ? data.call_status
@@ -112,6 +128,12 @@ export function normalizeFaceTimeCallEvent(value: unknown): FaceTimeCallStatusEv
       call_status: status,
       conversation_uuid: conversationUUID,
       conversation_group_uuid: conversationGroupUUID,
+      conversation_audio_enabled: data.conversation_audio_enabled === true,
+      conversation_video_enabled: data.conversation_video_enabled === true,
+      conversation_av_mode: Number.isInteger(conversationAVMode) ? conversationAVMode : undefined,
+      conversation_resolved_audio_video_mode: Number.isInteger(conversationResolvedAVMode)
+        ? conversationResolvedAVMode
+        : undefined,
       is_outgoing: data.is_outgoing === true,
       is_sending_audio: data.is_sending_audio === true,
       is_sending_transmission: data.is_sending_transmission === true,

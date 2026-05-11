@@ -79,11 +79,11 @@ export class FaceTimeHelperSocketServer {
   }
 
   async setMuted(callUUID: string, muted: boolean): Promise<HelperActionResult> {
-    return await this.#sendAction("set-muted", { callUUID, muted });
+    return await this.#sendActionToAll("set-muted", { callUUID, muted });
   }
 
   async startTransmission(callUUID: string): Promise<HelperActionResult> {
-    return await this.#sendAction("start-transmission", { callUUID });
+    return await this.#sendActionToAll("start-transmission", { callUUID });
   }
 
   get connectedSockets(): number {
@@ -153,6 +153,59 @@ export class FaceTimeHelperSocketServer {
     if (!socket) {
       throw new Error("FaceTime helper is not connected to the facetime event socket");
     }
+    const transactionId = randomUUID();
+    const payload = JSON.stringify({ action, data, transactionId });
+    return await new Promise<HelperActionResult>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        this.#pending.delete(transactionId);
+        reject(new Error(`FaceTime helper action timed out: ${action}`));
+      }, 5_000);
+      this.#pending.set(transactionId, { resolve, reject, timeout });
+      socket.write(`${payload}\r\n`, (error) => {
+        if (!error) {
+          return;
+        }
+        clearTimeout(timeout);
+        this.#pending.delete(transactionId);
+        reject(error);
+      });
+    });
+  }
+
+  async #sendActionToAll(
+    action: string,
+    data: Record<string, unknown>,
+  ): Promise<HelperActionResult> {
+    const sockets = [...this.#sockets].filter((candidate) => !candidate.destroyed);
+    if (sockets.length === 0) {
+      throw new Error("FaceTime helper is not connected to the facetime event socket");
+    }
+    const results = await Promise.allSettled(
+      sockets.map((socket) => this.#sendActionOnSocket(socket, action, data)),
+    );
+    const fulfilled = results
+      .filter((result): result is PromiseFulfilledResult<HelperActionResult> => result.status === "fulfilled")
+      .map((result) => result.value);
+    if (fulfilled.length > 0) {
+      return {
+        helpersContacted: sockets.length,
+        helperResults: fulfilled,
+        ...fulfilled[fulfilled.length - 1],
+      };
+    }
+    const firstRejected = results.find(
+      (result): result is PromiseRejectedResult => result.status === "rejected",
+    );
+    throw firstRejected?.reason instanceof Error
+      ? firstRejected.reason
+      : new Error(`FaceTime helper action failed: ${action}`);
+  }
+
+  async #sendActionOnSocket(
+    socket: net.Socket,
+    action: string,
+    data: Record<string, unknown>,
+  ): Promise<HelperActionResult> {
     const transactionId = randomUUID();
     const payload = JSON.stringify({ action, data, transactionId });
     return await new Promise<HelperActionResult>((resolve, reject) => {

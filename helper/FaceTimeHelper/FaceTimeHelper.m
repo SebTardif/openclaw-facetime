@@ -140,6 +140,10 @@ FACETIMEHELPER *plugin;
         @"call_uuid": [call callUUID] ?: [NSNull null],
         @"conversation_uuid": [[conversation UUID] UUIDString] ?: [NSNull null],
         @"conversation_group_uuid": [[conversation groupUUID] UUIDString] ?: [NSNull null],
+        @"conversation_audio_enabled": [NSNumber numberWithBool:[conversation isAudioEnabled]] ?: [NSNull null],
+        @"conversation_video_enabled": [NSNumber numberWithBool:[conversation isVideoEnabled]] ?: [NSNull null],
+        @"conversation_av_mode": [NSNumber numberWithUnsignedInteger:[conversation avMode]] ?: [NSNull null],
+        @"conversation_resolved_audio_video_mode": [NSNumber numberWithUnsignedInteger:[conversation resolvedAudioVideoMode]] ?: [NSNull null],
         @"is_conversation": [NSNumber numberWithBool:[call isConversation]] ?: [NSNull null],
         @"disconnected_reason": [NSNumber numberWithInt:[call disconnectedReason]] ?: [NSNull null],
         @"ended_error": [call endedErrorString] ?: [NSNull null],
@@ -174,6 +178,19 @@ FACETIMEHELPER *plugin;
     BOOL didSetPendingUplinkMuted = NO;
     BOOL didSetAudioPaused = NO;
     BOOL didStartAudio = NO;
+    BOOL didSetConversationAudioEnabled = NO;
+    BOOL didSetConversationAVMode = NO;
+    BOOL didSetLocalParticipantMode = NO;
+    BOOL didSetLocalParticipantModeViaXPC = NO;
+    
+    if ([conversation respondsToSelector:@selector(setAudioEnabled:)]) {
+        [conversation setAudioEnabled:!muted];
+        didSetConversationAudioEnabled = YES;
+    }
+    if (!muted && [conversation respondsToSelector:@selector(setAvMode:)]) {
+        [conversation setAvMode:1];
+        didSetConversationAVMode = YES;
+    }
     
     if ([conversationManager respondsToSelector:@selector(setUplinkMuted:forConversationWithUUID:)]) {
         void (*setUplinkMuted)(id, SEL, BOOL, id) = (void (*)(id, SEL, BOOL, id))[conversationManager methodForSelector:@selector(setUplinkMuted:forConversationWithUUID:)];
@@ -195,11 +212,31 @@ FACETIMEHELPER *plugin;
         startAudio(conversationManager, @selector(startAudioForConversationWithUUID:), conversationUUID);
         didStartAudio = YES;
     }
+    if (!muted) {
+        TUConversationManager *tuConversationManager = [[TUConversationManager alloc] init];
+        if ([tuConversationManager respondsToSelector:@selector(setLocalParticipantAudioVideoMode:forConversationUUID:)]) {
+            [tuConversationManager setLocalParticipantAudioVideoMode:1 forConversationUUID:conversationUUID];
+            didSetLocalParticipantMode = YES;
+        }
+        TUConversationManagerXPCClient *xpcClient = [[TUConversationManagerXPCClient alloc] init];
+        if ([xpcClient respondsToSelector:@selector(setLocalParticipantAudioVideoMode:forConversationUUID:)]) {
+            [xpcClient setLocalParticipantAudioVideoMode:1 forConversationUUID:conversationUUID];
+            didSetLocalParticipantModeViaXPC = YES;
+        }
+    }
     
+    result[@"conversation_audio_enabled"] = [NSNumber numberWithBool:[conversation isAudioEnabled]];
+    result[@"conversation_video_enabled"] = [NSNumber numberWithBool:[conversation isVideoEnabled]];
+    result[@"conversation_av_mode"] = [NSNumber numberWithUnsignedInteger:[conversation avMode]];
+    result[@"conversation_resolved_audio_video_mode"] = [NSNumber numberWithUnsignedInteger:[conversation resolvedAudioVideoMode]];
+    result[@"conversation_audio_enabled_set"] = [NSNumber numberWithBool:didSetConversationAudioEnabled];
+    result[@"conversation_av_mode_set"] = [NSNumber numberWithBool:didSetConversationAVMode];
     result[@"conversation_uplink_muted_set"] = [NSNumber numberWithBool:didSetUplinkMuted];
     result[@"pending_conversation_uplink_muted_set"] = [NSNumber numberWithBool:didSetPendingUplinkMuted];
     result[@"conversation_audio_paused_cleared"] = [NSNumber numberWithBool:didSetAudioPaused];
     result[@"conversation_audio_started"] = [NSNumber numberWithBool:didStartAudio];
+    result[@"local_participant_audio_video_mode_set"] = [NSNumber numberWithBool:didSetLocalParticipantMode];
+    result[@"local_participant_audio_video_mode_xpc_set"] = [NSNumber numberWithBool:didSetLocalParticipantModeViaXPC];
     return result;
 }
 
