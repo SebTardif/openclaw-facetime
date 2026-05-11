@@ -31,6 +31,11 @@ import { playFaceTimeTestAudio } from "./test-audio.js";
 type ActiveFaceTimeCall = {
   callUUID: string;
   handle?: string;
+  callStatus?: number;
+  isSendingAudio?: boolean;
+  isSendingTransmission?: boolean;
+  isUplinkMuted?: boolean;
+  isSendingVideo?: boolean;
   audioDefaults?: AudioDefaultsSnapshot;
   audioRouted: boolean;
   audioDevices?: AudioDefaultsSnapshot;
@@ -47,6 +52,11 @@ export type FaceTimeRuntimeStatus = {
   calls: Array<{
     callUUID: string;
     handle?: string;
+    callStatus?: number;
+    isSendingAudio?: boolean;
+    isSendingTransmission?: boolean;
+    isUplinkMuted?: boolean;
+    isSendingVideo?: boolean;
     realtimeActive: boolean;
     audioRouted: boolean;
     audioDevices?: AudioDefaultsSnapshot;
@@ -66,6 +76,27 @@ export type FaceTimeRuntime = {
 
 function readCallUUID(event: FaceTimeCallStatusEvent): string {
   return String(event.data.call_uuid);
+}
+
+function updateCallStatus(call: ActiveFaceTimeCall, event: FaceTimeCallStatusEvent): void {
+  call.callStatus =
+    typeof event.data.call_status === "number" ? event.data.call_status : call.callStatus;
+  call.isSendingAudio =
+    typeof event.data.is_sending_audio === "boolean"
+      ? event.data.is_sending_audio
+      : call.isSendingAudio;
+  call.isSendingTransmission =
+    typeof event.data.is_sending_transmission === "boolean"
+      ? event.data.is_sending_transmission
+      : call.isSendingTransmission;
+  call.isUplinkMuted =
+    typeof event.data.is_uplink_muted === "boolean"
+      ? event.data.is_uplink_muted
+      : call.isUplinkMuted;
+  call.isSendingVideo =
+    typeof event.data.is_sending_video === "boolean"
+      ? event.data.is_sending_video
+      : call.isSendingVideo;
 }
 
 export async function createFaceTimeRuntime(params: {
@@ -204,6 +235,7 @@ export async function createFaceTimeRuntime(params: {
     }
     const handle = normalizeFaceTimeHandle(event.data.handle);
     const call: ActiveFaceTimeCall = { callUUID, handle, audioRouted: false };
+    updateCallStatus(call, event);
     calls.set(callUUID, call);
     try {
       await routeCallAudio(call, { prepareFaceTimeUi: false, unmute: false });
@@ -226,6 +258,7 @@ export async function createFaceTimeRuntime(params: {
       call = { callUUID, handle: normalizeFaceTimeHandle(event.data.handle), audioRouted: false };
       calls.set(callUUID, call);
     }
+    updateCallStatus(call, event);
     if (call.talk || call.talkStarting) {
       return;
     }
@@ -260,6 +293,10 @@ export async function createFaceTimeRuntime(params: {
       return;
     }
     const callUUID = readCallUUID(event);
+    const existingCall = calls.get(callUUID);
+    if (existingCall) {
+      updateCallStatus(existingCall, event);
+    }
     const handleForLog =
       normalizeFaceTimeHandleCandidates(event.data.handle).join(", ") || "unknown";
     if (isIncomingRingingCall(event)) {
@@ -316,6 +353,11 @@ export async function createFaceTimeRuntime(params: {
         calls: [...calls.values()].map((call) => ({
           callUUID: call.callUUID,
           handle: call.handle,
+          callStatus: call.callStatus,
+          isSendingAudio: call.isSendingAudio,
+          isSendingTransmission: call.isSendingTransmission,
+          isUplinkMuted: call.isUplinkMuted,
+          isSendingVideo: call.isSendingVideo,
           realtimeActive: Boolean(call.talk),
           audioRouted: call.audioRouted,
           audioDevices: call.audioDevices,

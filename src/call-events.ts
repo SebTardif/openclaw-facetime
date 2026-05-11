@@ -14,7 +14,9 @@ export type FaceTimeCallStatusData = {
   is_conversation?: unknown;
   is_outgoing?: unknown;
   is_sending_audio?: unknown;
+  is_sending_transmission?: unknown;
   is_sending_video?: unknown;
+  is_uplink_muted?: unknown;
 };
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -105,6 +107,10 @@ export function normalizeFaceTimeCallEvent(value: unknown): FaceTimeCallStatusEv
       call_uuid: callUUID,
       call_status: status,
       is_outgoing: data.is_outgoing === true,
+      is_sending_audio: data.is_sending_audio === true,
+      is_sending_transmission: data.is_sending_transmission === true,
+      is_sending_video: data.is_sending_video === true,
+      is_uplink_muted: data.is_uplink_muted === true,
     },
   };
 }

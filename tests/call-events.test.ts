@@ -16,12 +16,20 @@ describe("FaceTime call events", () => {
         call_uuid: "call-1",
         call_status: 4,
         is_outgoing: false,
+        is_sending_audio: true,
+        is_sending_transmission: true,
+        is_sending_video: false,
+        is_uplink_muted: false,
         handle: { value: "mailto:omar@example.com" },
       },
     });
 
     expect(event?.data.call_uuid).toBe("call-1");
     expect(event?.data.call_status).toBe(4);
+    expect(event?.data.is_sending_audio).toBe(true);
+    expect(event?.data.is_sending_transmission).toBe(true);
+    expect(event?.data.is_sending_video).toBe(false);
+    expect(event?.data.is_uplink_muted).toBe(false);
     expect(isIncomingRingingCall(event!)).toBe(true);
     expect(isActiveCall(event!)).toBe(false);
     expect(isEndedCall(event!)).toBe(false);
