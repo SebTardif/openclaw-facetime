@@ -7,6 +7,8 @@ export type FaceTimeCallStatusData = {
   audio_mode?: unknown;
   call_status?: unknown;
   call_uuid?: unknown;
+  conversation_group_uuid?: unknown;
+  conversation_uuid?: unknown;
   disconnected_reason?: unknown;
   ended_error?: unknown;
   ended_reason?: unknown;
@@ -91,6 +93,8 @@ export function normalizeFaceTimeCallEvent(value: unknown): FaceTimeCallStatusEv
   }
   const data = asRecord(record.data);
   const callUUID = readString(data.call_uuid);
+  const conversationUUID = readString(data.conversation_uuid);
+  const conversationGroupUUID = readString(data.conversation_group_uuid);
   const status =
     typeof data.call_status === "number"
       ? data.call_status
@@ -106,6 +110,8 @@ export function normalizeFaceTimeCallEvent(value: unknown): FaceTimeCallStatusEv
       ...data,
       call_uuid: callUUID,
       call_status: status,
+      conversation_uuid: conversationUUID,
+      conversation_group_uuid: conversationGroupUUID,
       is_outgoing: data.is_outgoing === true,
       is_sending_audio: data.is_sending_audio === true,
       is_sending_transmission: data.is_sending_transmission === true,

@@ -133,10 +133,13 @@ FACETIMEHELPER *plugin;
     if (call == nil || ![call respondsToSelector:@selector(callUUID)] || ![call respondsToSelector:@selector(callStatus)]) {
         return;
     }
+    TUConversation *conversation = [[TUCallCenter sharedInstance] activeConversationForCall:call];
     NSDictionary *data = @{
         @"audio_mode": [call audioMode] ?: [NSNull null],
         @"call_status": [NSNumber numberWithInt:[call callStatus]] ?: [NSNull null],
         @"call_uuid": [call callUUID] ?: [NSNull null],
+        @"conversation_uuid": [[conversation UUID] UUIDString] ?: [NSNull null],
+        @"conversation_group_uuid": [[conversation groupUUID] UUIDString] ?: [NSNull null],
         @"is_conversation": [NSNumber numberWithBool:[call isConversation]] ?: [NSNull null],
         @"disconnected_reason": [NSNumber numberWithInt:[call disconnectedReason]] ?: [NSNull null],
         @"ended_error": [call endedErrorString] ?: [NSNull null],
@@ -150,6 +153,54 @@ FACETIMEHELPER *plugin;
     };
     NSDictionary *message = @{@"event": @"ft-call-status-changed", @"data": data};
     [[NetworkController sharedInstance] sendMessage: message];
+}
+
+-(NSDictionary*) startConversationAudioForCall:(TUCall*)call muted:(BOOL)muted {
+    NSMutableDictionary *result = [NSMutableDictionary dictionary];
+    TUConversation *conversation = [[TUCallCenter sharedInstance] activeConversationForCall:call];
+    NSUUID *conversationUUID = [conversation UUID];
+    result[@"conversation_uuid"] = [conversationUUID UUIDString] ?: [NSNull null];
+    result[@"conversation_group_uuid"] = [[conversation groupUUID] UUIDString] ?: [NSNull null];
+    
+    if (conversationUUID == nil) {
+        result[@"conversation_audio_started"] = @NO;
+        result[@"conversation_audio_error"] = @"No active conversation UUID";
+        return result;
+    }
+    
+    Class conversationManagerClass = NSClassFromString(@"CSDConversationManager");
+    id conversationManager = [[conversationManagerClass alloc] init];
+    BOOL didSetUplinkMuted = NO;
+    BOOL didSetPendingUplinkMuted = NO;
+    BOOL didSetAudioPaused = NO;
+    BOOL didStartAudio = NO;
+    
+    if ([conversationManager respondsToSelector:@selector(setUplinkMuted:forConversationWithUUID:)]) {
+        void (*setUplinkMuted)(id, SEL, BOOL, id) = (void (*)(id, SEL, BOOL, id))[conversationManager methodForSelector:@selector(setUplinkMuted:forConversationWithUUID:)];
+        setUplinkMuted(conversationManager, @selector(setUplinkMuted:forConversationWithUUID:), muted, conversationUUID);
+        didSetUplinkMuted = YES;
+    }
+    if ([conversationManager respondsToSelector:@selector(setUplinkMuted:forPendingConversationWithUUID:)]) {
+        void (*setPendingUplinkMuted)(id, SEL, BOOL, id) = (void (*)(id, SEL, BOOL, id))[conversationManager methodForSelector:@selector(setUplinkMuted:forPendingConversationWithUUID:)];
+        setPendingUplinkMuted(conversationManager, @selector(setUplinkMuted:forPendingConversationWithUUID:), muted, conversationUUID);
+        didSetPendingUplinkMuted = YES;
+    }
+    if (!muted && [conversationManager respondsToSelector:@selector(setAudioPaused:forConversationWithUUID:)]) {
+        void (*setAudioPaused)(id, SEL, BOOL, id) = (void (*)(id, SEL, BOOL, id))[conversationManager methodForSelector:@selector(setAudioPaused:forConversationWithUUID:)];
+        setAudioPaused(conversationManager, @selector(setAudioPaused:forConversationWithUUID:), NO, conversationUUID);
+        didSetAudioPaused = YES;
+    }
+    if (!muted && [conversationManager respondsToSelector:@selector(startAudioForConversationWithUUID:)]) {
+        void (*startAudio)(id, SEL, id) = (void (*)(id, SEL, id))[conversationManager methodForSelector:@selector(startAudioForConversationWithUUID:)];
+        startAudio(conversationManager, @selector(startAudioForConversationWithUUID:), conversationUUID);
+        didStartAudio = YES;
+    }
+    
+    result[@"conversation_uplink_muted_set"] = [NSNumber numberWithBool:didSetUplinkMuted];
+    result[@"pending_conversation_uplink_muted_set"] = [NSNumber numberWithBool:didSetPendingUplinkMuted];
+    result[@"conversation_audio_paused_cleared"] = [NSNumber numberWithBool:didSetAudioPaused];
+    result[@"conversation_audio_started"] = [NSNumber numberWithBool:didStartAudio];
+    return result;
 }
 
 -(void) pollCallStatuses {
@@ -252,15 +303,18 @@ FACETIMEHELPER *plugin;
         BOOL muted = [data[@"muted"] boolValue];
         BOOL didSetMuted = [call setMuted:muted];
         [call setUplinkMuted:muted];
+        NSDictionary *conversationAudioResult = [self startConversationAudioForCall:call muted:muted];
         if (transaction != nil) {
-            [controller sendMessage: @{
+            NSMutableDictionary *response = [@{
                 @"transactionId": transaction,
                 @"muted": [NSNumber numberWithBool:[call isMuted]],
                 @"is_sending_audio": [NSNumber numberWithBool:[call isSendingAudio]],
                 @"is_sending_transmission": [NSNumber numberWithBool:[call isSendingTransmission]],
                 @"is_uplink_muted": [NSNumber numberWithBool:[call isUplinkMuted]],
                 @"ok": [NSNumber numberWithBool:didSetMuted],
-            }];
+            } mutableCopy];
+            [response addEntriesFromDictionary:conversationAudioResult];
+            [controller sendMessage: response];
         }
     } else if ([event isEqualToString:@"start-transmission"]) {
         TUCall *call = [[TUCallCenter sharedInstance] callWithCallUUID:(data[@"callUUID"])];
@@ -274,14 +328,17 @@ FACETIMEHELPER *plugin;
         
         [call setUplinkMuted:NO];
         [[TUCallCenter sharedInstance] startTransmissionForBargeCall:call sourceIsHandsfreeAccessory:NO];
+        NSDictionary *conversationAudioResult = [self startConversationAudioForCall:call muted:NO];
         if (transaction != nil) {
-            [controller sendMessage: @{
+            NSMutableDictionary *response = [@{
                 @"transactionId": transaction,
                 @"muted": [NSNumber numberWithBool:[call isMuted]],
                 @"is_sending_audio": [NSNumber numberWithBool:[call isSendingAudio]],
                 @"is_sending_transmission": [NSNumber numberWithBool:[call isSendingTransmission]],
                 @"is_uplink_muted": [NSNumber numberWithBool:[call isUplinkMuted]],
-            }];
+            } mutableCopy];
+            [response addEntriesFromDictionary:conversationAudioResult];
+            [controller sendMessage: response];
         }
     } else if ([event isEqualToString:@"generate-link"]) {
         if (data[@"callUUID"] != [NSNull null]) {
