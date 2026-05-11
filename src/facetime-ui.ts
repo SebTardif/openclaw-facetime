@@ -16,11 +16,6 @@ function buildPrepareFaceTimeCallAudioScript(params: {
   unmute: boolean;
 }) {
   const deviceName = appleScriptString(params.blackholeDeviceName);
-  const unmuteScript = params.unmute
-    ? `
-my clickVideoMenuItemByName("Mute", 1, false)
-`
-    : "";
 
   return `
 on dismissFaceTimeAlerts()
@@ -59,7 +54,6 @@ end clickVideoMenuItemByName
 tell application "FaceTime" to activate
 delay 0.2
 my dismissFaceTimeAlerts()
-${unmuteScript}
 my clickVideoMenuItemByName(${deviceName}, 1, true)
 my dismissFaceTimeAlerts()
 my clickVideoMenuItemByName(${deviceName}, 2, true)
@@ -84,4 +78,3 @@ export async function prepareFaceTimeCallAudio(
     );
   }
 }
-

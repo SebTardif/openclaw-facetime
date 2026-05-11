@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { prepareFaceTimeCallAudio } from "../src/facetime-ui.js";
 
 describe("FaceTime UI preparation", () => {
-  it("selects BlackHole from FaceTime and only unmutes when requested", async () => {
+  it("selects BlackHole from FaceTime without toggling the mute menu item", async () => {
     const runCommandWithTimeout = vi.fn().mockResolvedValue({ code: 0, stdout: "", stderr: "" });
 
     await prepareFaceTimeCallAudio(
@@ -21,7 +21,7 @@ describe("FaceTime UI preparation", () => {
       ["osascript", "-e"],
       ["osascript", "-e"],
     ]);
-    expect(firstScript).toContain('my clickVideoMenuItemByName("Mute", 1, false)');
+    expect(firstScript).not.toContain('my clickVideoMenuItemByName("Mute", 1, false)');
     expect(firstScript).toContain('my clickVideoMenuItemByName("BlackHole \\"16ch\\"", 1, true)');
     expect(firstScript).toContain('my clickVideoMenuItemByName("BlackHole \\"16ch\\"", 2, true)');
     expect(secondScript).not.toContain('my clickVideoMenuItemByName("Mute", 1, false)');
@@ -40,4 +40,3 @@ describe("FaceTime UI preparation", () => {
     ).rejects.toThrow("not authorized");
   });
 });
-
