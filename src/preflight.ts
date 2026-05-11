@@ -122,6 +122,47 @@ printf 'loopback rms=%s\\n' "$rms"
   });
 }
 
+async function checkBlackHolePcmLoopback(params: {
+  runCommandWithTimeout: RunCommandWithTimeout;
+  checks: FaceTimePreflightCheck[];
+  deviceName: string;
+}) {
+  const device = shellSingleQuote(params.deviceName);
+  const script = `
+set -euo pipefail
+if [[ -x /opt/homebrew/bin/sox ]]; then sox=/opt/homebrew/bin/sox
+elif [[ -x /usr/local/bin/sox ]]; then sox=/usr/local/bin/sox
+else sox=sox
+fi
+capture="$(mktemp -t openclaw-facetime-pcm-loopback-capture.XXXXXX.raw)"
+source="$(mktemp -t openclaw-facetime-pcm-loopback-source.XXXXXX.raw)"
+cleanup() { rm -f "$capture" "$source"; }
+trap cleanup EXIT
+"$sox" -q -n -t raw -r 24000 -c 1 -e signed-integer -b 16 -L "$source" synth 2 sine 880 vol 0.9
+"$sox" -q -t coreaudio ${device} -t raw -r 48000 -c 1 -e signed-integer -b 16 -L "$capture" trim 0 3 &
+recpid=$!
+sleep 0.3
+"$sox" -q --buffer 4096 -t raw -r 24000 -c 1 -e signed-integer -b 16 -L "$source" -c 16 -t coreaudio ${device} gain -n 3
+wait "$recpid" || true
+stat="$("$sox" -q -t raw -r 48000 -c 1 -e signed-integer -b 16 -L "$capture" -n stat 2>&1)"
+rms="$(printf "%s\\n" "$stat" | awk '/RMS[[:space:]]+amplitude/ { print $3; exit }')"
+node -e 'const rms=Number(process.argv[1]); if (!Number.isFinite(rms) || rms < 0.005) process.exit(1)' "$rms"
+printf 'pcm loopback rms=%s\\n' "$rms"
+`;
+  const result = await params.runCommandWithTimeout(["/bin/bash", "-lc", script], {
+    timeoutMs: 10_000,
+  });
+  pushCheck(params.checks, {
+    id: "blackhole-pcm-loopback",
+    label: "BlackHole PCM loopback audio",
+    ok: result.code === 0,
+    message:
+      firstLine(result.stdout) ??
+      firstLine(result.stderr) ??
+      `no PCM loopback signal detected on ${params.deviceName}`,
+  });
+}
+
 function hasProviderCredential(params: {
   config: FaceTimeConfig;
   fullConfig: OpenClawConfig;
@@ -211,6 +252,11 @@ export async function runFaceTimePreflight(params: {
   });
 
   await checkBlackHoleLoopback({
+    runCommandWithTimeout: params.runtime.system.runCommandWithTimeout,
+    checks,
+    deviceName: params.config.audio.blackholeDeviceUid,
+  });
+  await checkBlackHolePcmLoopback({
     runCommandWithTimeout: params.runtime.system.runCommandWithTimeout,
     checks,
     deviceName: params.config.audio.blackholeDeviceUid,
