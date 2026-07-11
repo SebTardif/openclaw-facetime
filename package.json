@@ -60,5 +60,9 @@
       "protobufjs",
       "tree-sitter-bash"
     ]
+  },
+  "packageManager": "pnpm@10.34.4",
+  "engines": {
+    "node": ">=25"
   }
 }
