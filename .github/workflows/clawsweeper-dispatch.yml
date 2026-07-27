@@ -200,5 +200,3 @@ jobs:
           GH_TOKEN="$DISPATCH_TOKEN" gh api repos/openclaw/clawsweeper/dispatches \
             --method POST \
             --input - <<< "$payload"
-```
-```yaml
