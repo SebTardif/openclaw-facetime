@@ -7,6 +7,8 @@ export type FaceTimeCallStatusData = {
   audio_mode?: unknown;
   call_status?: unknown;
   call_uuid?: unknown;
+  dial_id?: unknown;
+  proxy_identifier?: unknown;
   conversation_group_uuid?: unknown;
   conversation_uuid?: unknown;
   conversation_audio_enabled?: unknown;
@@ -23,6 +25,13 @@ export type FaceTimeCallStatusData = {
   is_sending_transmission?: unknown;
   is_sending_video?: unknown;
   is_uplink_muted?: unknown;
+  local_meter_level?: unknown;
+  remote_meter_level?: unknown;
+};
+
+export type AuthenticatedFaceTimeOwner = {
+  senderId: string;
+  senderIsOwner: true;
 };
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -33,6 +42,12 @@ function asRecord(value: unknown): Record<string, unknown> {
 
 function readString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function readFiniteNumber(value: unknown): number | undefined {
+  const number =
+    typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
+  return Number.isFinite(number) ? number : undefined;
 }
 
 const handleValueKeys = new Set([
@@ -79,7 +94,7 @@ export function normalizeFaceTimeHandle(value: unknown): string | undefined {
   return normalizeFaceTimeHandleCandidates(value)[0];
 }
 
-function canonicalizeHandle(value: string): string {
+export function canonicalizeFaceTimeHandle(value: string): string {
   const stripped = value
     .trim()
     .toLowerCase()
@@ -97,6 +112,7 @@ export function normalizeFaceTimeCallEvent(value: unknown): FaceTimeCallStatusEv
   }
   const data = asRecord(record.data);
   const callUUID = readString(data.call_uuid);
+  const proxyIdentifier = readString(data.proxy_identifier);
   const conversationUUID = readString(data.conversation_uuid);
   const conversationGroupUUID = readString(data.conversation_group_uuid);
   const conversationAVMode =
@@ -125,6 +141,7 @@ export function normalizeFaceTimeCallEvent(value: unknown): FaceTimeCallStatusEv
     data: {
       ...data,
       call_uuid: callUUID,
+      proxy_identifier: proxyIdentifier,
       call_status: status,
       conversation_uuid: conversationUUID,
       conversation_group_uuid: conversationGroupUUID,
@@ -139,6 +156,8 @@ export function normalizeFaceTimeCallEvent(value: unknown): FaceTimeCallStatusEv
       is_sending_transmission: data.is_sending_transmission === true,
       is_sending_video: data.is_sending_video === true,
       is_uplink_muted: data.is_uplink_muted === true,
+      local_meter_level: readFiniteNumber(data.local_meter_level),
+      remote_meter_level: readFiniteNumber(data.remote_meter_level),
     },
   };
 }
@@ -151,11 +170,54 @@ export function isWhitelistedFaceTimeCall(params: {
   if (handles.length === 0) {
     return false;
   }
-  const canonicalHandles = new Set(handles.map(canonicalizeHandle));
+  const canonicalHandles = new Set(handles.map(canonicalizeFaceTimeHandle));
   return params.whitelistHandles.some((entry) => {
-    const canonicalEntry = canonicalizeHandle(entry);
+    const canonicalEntry = canonicalizeFaceTimeHandle(entry);
     return canonicalHandles.has(canonicalEntry);
   });
+}
+
+export function resolveAllowlistedFaceTimeOwner(params: {
+  event: FaceTimeCallStatusEvent;
+  whitelistHandles: readonly string[];
+}): AuthenticatedFaceTimeOwner | undefined {
+  const allowlistedHandles = new Set(
+    params.whitelistHandles.map(canonicalizeFaceTimeHandle).filter(Boolean),
+  );
+  const senderId = normalizeFaceTimeHandleCandidates(params.event.data.handle)
+    .map(canonicalizeFaceTimeHandle)
+    .find((candidate) => allowlistedHandles.has(candidate));
+  if (!senderId) {
+    return undefined;
+  }
+  // Admission and owner authorization are one contract; this plugin has no guest caller tier.
+  return { senderId, senderIsOwner: true };
+}
+
+export function doesFaceTimeCallMatchHandle(params: {
+  event: FaceTimeCallStatusEvent;
+  handle: string;
+}): boolean {
+  const expected = canonicalizeFaceTimeHandle(params.handle);
+  return (
+    expected.length > 0 &&
+    normalizeFaceTimeHandleCandidates(params.event.data.handle).some(
+      (candidate) => canonicalizeFaceTimeHandle(candidate) === expected,
+    )
+  );
+}
+
+export function isWhitelistedFaceTimeHandle(params: {
+  handle: string;
+  whitelistHandles: readonly string[];
+}): boolean {
+  const canonicalHandle = canonicalizeFaceTimeHandle(params.handle);
+  return (
+    canonicalHandle.length > 0 &&
+    params.whitelistHandles.some(
+      (entry) => canonicalizeFaceTimeHandle(entry) === canonicalHandle,
+    )
+  );
 }
 
 export function isIncomingRingingCall(event: FaceTimeCallStatusEvent): boolean {
@@ -166,6 +228,15 @@ export function isActiveCall(event: FaceTimeCallStatusEvent): boolean {
   return event.data.call_status === 1;
 }
 
+export function isOutgoingRingingCall(event: FaceTimeCallStatusEvent): boolean {
+  return (
+    (event.data.call_status === 0 || event.data.call_status === 3) &&
+    event.data.is_outgoing === true
+  );
+}
+
 export function isEndedCall(event: FaceTimeCallStatusEvent): boolean {
-  return !isIncomingRingingCall(event) && !isActiveCall(event);
+  return (
+    !isIncomingRingingCall(event) && !isOutgoingRingingCall(event) && !isActiveCall(event)
+  );
 }

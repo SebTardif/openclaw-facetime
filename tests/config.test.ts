@@ -12,11 +12,14 @@ describe("facetime config", () => {
     });
 
     expect(config.helperPort).toBe(defaultFaceTimeHelperPort());
-    expect(config.audio.blackholeDeviceUid).toBe("BlackHole 16ch");
-    expect(config.realtime.model).toBe("gpt-realtime-2");
-    expect(config.realtime.voice).toBe("cedar");
+    expect("audio" in config).toBe(false);
+    expect(config.realtime.model).toBe("gpt-realtime-2.1");
+    expect(config.realtime.voice).toBe("marin");
     expect(config.realtime.brain).toBe("agent-consult");
     expect(config.realtime.toolPolicy).toBe("owner");
+    expect(config.realtime.instructions).toContain("configured OpenClaw agent");
+    expect(config.realtime.instructions).not.toContain("Lobster");
+    expect(config.realtime.instructions).not.toContain("Omar");
   });
 
   it("requires at least one whitelist handle", () => {

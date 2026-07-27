@@ -3,14 +3,23 @@ import {
   errorShape,
   type GatewayRequestHandlerOptions,
 } from "openclaw/plugin-sdk/gateway-runtime";
-import { definePluginEntry, type OpenClawPluginApi } from "openclaw/plugin-sdk/plugin-entry";
+import {
+  definePluginEntry,
+  type OpenClawPluginApi,
+  type OpenClawPluginDefinition,
+} from "openclaw/plugin-sdk/plugin-entry";
 import { createFaceTimeRuntime, type FaceTimeRuntime } from "./runtime-entry.js";
 import { formatErrorMessage } from "./src/errors.js";
+import { inspectFaceTimeDriver } from "./src/driver-setup.js";
 import {
   resolveFaceTimeConfig,
   validateFaceTimeConfig,
   type FaceTimeConfig,
 } from "./src/config.js";
+import { resolvePluginRoot } from "./src/plugin-paths.js";
+import { stopRetainedRuntime } from "./src/runtime-lifecycle.js";
+import { runFaceTimeSetup } from "./src/setup.js";
+import { createFaceTimeCallTool, resolveFaceTimeToolApproval } from "./src/tool.js";
 
 const faceTimeConfigSchema = {
   parse(value: unknown): FaceTimeConfig {
@@ -21,29 +30,25 @@ const faceTimeConfigSchema = {
     helperHost: { label: "Helper Host", advanced: true },
     helperPort: { label: "Helper Port", advanced: true },
     whitelistHandles: { label: "Allowed FaceTime Handles" },
-    "audio.blackholeDeviceUid": { label: "BlackHole Device", advanced: true },
-    "audio.sampleRateHz": { label: "Audio Sample Rate", advanced: true },
-    "audio.saveAndRestoreDefaults": { label: "Restore Audio Defaults", advanced: true },
     "realtime.provider": { label: "Realtime Provider", advanced: true },
     "realtime.model": { label: "Realtime Model", advanced: true },
     "realtime.voice": { label: "Realtime Voice", advanced: true },
-    "realtime.sessionKey": { label: "Lobster Session Key", advanced: true },
+    "realtime.sessionKey": { label: "Agent Session Key", advanced: true },
     "realtime.brain": { label: "Brain Mode", advanced: true },
     "realtime.toolPolicy": { label: "Tool Policy", advanced: true },
   },
 };
 
-let runtimePromise: Promise<FaceTimeRuntime> | undefined;
-let runtime: FaceTimeRuntime | undefined;
-
-export default definePluginEntry({
+const faceTimePlugin: OpenClawPluginDefinition = definePluginEntry({
   id: "facetime",
   name: "FaceTime",
-  description: "Private FaceTime realtime voice carrier for Lobster",
+  description: "Private FaceTime realtime voice carrier for OpenClaw agents",
   configSchema: faceTimeConfigSchema,
   register(api: OpenClawPluginApi) {
     const config = resolveFaceTimeConfig(api.pluginConfig);
     const validation = validateFaceTimeConfig(config);
+    const pluginRoot = resolvePluginRoot(import.meta.url);
+    let runtimePromise: Promise<FaceTimeRuntime> | undefined;
 
     const ensureRuntime = async () => {
       if (!config.enabled) {
@@ -52,18 +57,49 @@ export default definePluginEntry({
       if (!validation.valid) {
         throw new Error(validation.errors.join("; "));
       }
-      if (runtime) {
-        return runtime;
-      }
       runtimePromise ??= createFaceTimeRuntime({
         config,
         fullConfig: api.config,
         runtime: api.runtime,
         logger: api.logger,
+        pluginRoot,
+      }).catch((error) => {
+        runtimePromise = undefined;
+        throw error;
       });
-      runtime = await runtimePromise;
-      return runtime;
+      return await runtimePromise;
     };
+
+    api.registerTool(() => createFaceTimeCallTool({ ensureRuntime }), {
+      name: "facetime_call",
+    });
+    api.on("before_tool_call", (event) => {
+      if (event.toolName !== "facetime_call") {
+        return;
+      }
+      return resolveFaceTimeToolApproval(event.params);
+    });
+
+    api.registerService({
+      id: "facetime-runtime",
+      async start() {
+        if (!config.enabled || !validation.valid) {
+          return;
+        }
+        try {
+          await ensureRuntime();
+        } catch (error) {
+          api.logger.warn(`[facetime] startup skipped: ${formatErrorMessage(error)}`);
+        }
+      },
+      async stop() {
+        await stopRetainedRuntime(runtimePromise, (stopped) => {
+          if (runtimePromise === stopped) {
+            runtimePromise = undefined;
+          }
+        });
+      },
+    });
 
     api.registerGatewayMethod(
       "facetime.status",
@@ -76,6 +112,63 @@ export default definePluginEntry({
         }
       },
       { scope: "operator.read" },
+    );
+
+    api.registerGatewayMethod(
+      "facetime.setup",
+      async ({ respond }: GatewayRequestHandlerOptions) => {
+        try {
+          let rt: FaceTimeRuntime;
+          try {
+            rt = await ensureRuntime();
+          } catch (runtimeError) {
+            respond(
+              true,
+              await runFaceTimeSetup({
+                config,
+                pluginRoot,
+                runCommandWithTimeout: api.runtime.system.runCommandWithTimeout,
+                runtimeError: formatErrorMessage(runtimeError),
+              }),
+            );
+            return;
+          }
+          respond(true, await rt.setup());
+        } catch (error) {
+          respond(false, undefined, errorShape(ErrorCodes.UNAVAILABLE, formatErrorMessage(error)));
+        }
+      },
+      { scope: "operator.read" },
+    );
+
+    api.registerGatewayMethod(
+      "facetime.driverStatus",
+      async ({ respond }: GatewayRequestHandlerOptions) => {
+        try {
+          const status = await inspectFaceTimeDriver({
+            pluginRoot,
+            runCommandWithTimeout: api.runtime.system.runCommandWithTimeout,
+          });
+          respond(true, { status });
+        } catch (error) {
+          respond(false, undefined, errorShape(ErrorCodes.UNAVAILABLE, formatErrorMessage(error)));
+        }
+      },
+      { scope: "operator.read" },
+    );
+
+    api.registerGatewayMethod(
+      "facetime.installDriver",
+      async ({ respond }: GatewayRequestHandlerOptions) => {
+        try {
+          const current = await ensureRuntime();
+          const result = await current.installDriver();
+          respond(true, { ok: true, ...result });
+        } catch (error) {
+          respond(false, undefined, errorShape(ErrorCodes.UNAVAILABLE, formatErrorMessage(error)));
+        }
+      },
+      { scope: "operator.admin" },
     );
 
     api.registerGatewayMethod(
@@ -109,6 +202,22 @@ export default definePluginEntry({
     );
 
     api.registerGatewayMethod(
+      "facetime.dial",
+      async ({ params, respond }: GatewayRequestHandlerOptions) => {
+        try {
+          const rt = await ensureRuntime();
+          const record = params && typeof params === "object" ? params : {};
+          const handle = "handle" in record ? (record as { handle?: unknown }).handle : undefined;
+          const mode = "mode" in record ? (record as { mode?: unknown }).mode : undefined;
+          respond(true, { ok: true, ...(await rt.dial({ handle, mode })) });
+        } catch (error) {
+          respond(false, undefined, errorShape(ErrorCodes.UNAVAILABLE, formatErrorMessage(error)));
+        }
+      },
+      { scope: "operator.write" },
+    );
+
+    api.registerGatewayMethod(
       "facetime.hangup",
       async ({ params, respond }: GatewayRequestHandlerOptions) => {
         try {
@@ -124,11 +233,7 @@ export default definePluginEntry({
       },
       { scope: "operator.write" },
     );
-
-    void ensureRuntime().catch((error) => {
-      api.logger.warn(`[facetime] startup skipped: ${formatErrorMessage(error)}`);
-      runtimePromise = undefined;
-      runtime = undefined;
-    });
   },
 });
+
+export default faceTimePlugin;
