@@ -48,32 +48,58 @@ arguments.
 ## Foundation release
 
 Update `VERSION` in `version.env`, merge with green CI, then dispatch **Release**
-from the current `main` branch with that version. The workflow:
+from the current `main` branch with that version. Before creating a tag, the
+workflow verifies that the repository is public, all six signing/notarization/
+tap secrets are present, and the exact target commit has a successful `ci.yml`
+push run on the default branch. It then:
 
-1. Validates SemVer, current `main`, and independent green CI.
+1. Validates SemVer, current `main`, exact green CI, and distribution readiness.
 2. Creates or verifies an immutable annotated tag.
-3. Imports only `Developer ID Application: OpenClaw Foundation (FWJYW4S8P8)` into an ephemeral keychain.
+3. Imports only `Developer ID Application: OpenClaw Foundation (FWJYW4S8P8)`
+   into an ephemeral keychain.
 4. Builds, signs, and notarizes the seven-file archive.
-5. Creates a draft release, downloads it independently, verifies checksums,
-   Foundation Team ID, helper identity, protocol version, and online Apple
-   notarization tickets.
-6. Publishes the verified draft.
-7. Dispatches the formula updater in `openclaw/homebrew-tap`.
+5. Creates or resumes a draft release, downloads it independently, verifies
+   checksums, Foundation Team ID, helper identity, protocol version, and online
+   Apple notarization tickets.
+6. Publishes the verified draft. A rerun resumes an existing draft or verifies
+   the same existing published release without replacing its assets.
+7. Verifies that the tap's allowlisted FaceTime profile is present on `main`,
+   byte-identical to the native formula contract, and exposed by the active tap
+   updater workflow.
+8. Dispatches the formula updater in `openclaw/homebrew-tap`.
 
 The required organization secrets, public-download decision, branch settings,
 and first-formula procedure are in `FOUNDATION_RELEASE_HANDOFF.md`.
 
 ## Homebrew
 
-The initial formula must be created only after the first public release. Copy
-`packaging/homebrew/openclaw-facetime.rb` to
-`openclaw/homebrew-tap/Formula/openclaw-facetime.rb`, replace
-`RELEASE_SHA256` with the published archive digest, and validate it in the tap.
-Future releases use `scripts/update-homebrew.sh` automatically.
+The release workflow never asks the tap's generic missing-formula path to create
+this formula. That path targets ordinary four-platform command-line archives and
+cannot preserve FaceTime's seven-file `libexec` contract. The tap-owned
+`formula_profile=openclaw-facetime` implementation must be merged in
+`openclaw/homebrew-tap` before Homebrew dispatch. The native workflow checks the
+allowlisted capability and byte-identical profile only after it has published
+and verified the native release.
+
+For the first release, run the native workflow before merging the tap profile.
+The run publishes the signed and notarized GitHub release, then is expected to
+fail at **Validate Homebrew handoff readiness**. Use that real public archive to
+prove and merge the tap profile. Rerun the native workflow with the same version;
+it reuses the immutable annotated tag and published release, verifies the
+existing public assets, and completes the tap dispatch. Do not delete or
+recreate the tag or release between runs. Later releases normally complete in a
+single run because the profile is already present.
+
+`packaging/homebrew/openclaw-facetime.rb` records the reviewed native archive
+contract. Releases use `scripts/update-homebrew.sh` to dispatch the tap-owned
+profile after the verified release is public, allowing the tap to download and
+hash the asset before it seeds or updates the formula. `HOMEBREW_TAP_TOKEN`
+needs Actions write only; the tap's own `GITHUB_TOKEN` owns formula commits.
 
 The formula preserves both Mach-O signatures with `skip_clean` and installs all
 seven files under `opt/openclaw-facetime/libexec`, which is the plugin's native
-artifact contract.
+artifact contract. It also declares SoX for the OpenClaw host's separate
+playback process.
 
 ## Security properties
 
