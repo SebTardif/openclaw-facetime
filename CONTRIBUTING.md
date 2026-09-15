@@ -10,6 +10,12 @@ and runtime-lifecycle changes there.
 You need an Apple Silicon Mac, full Xcode, a supported Node.js version from
 `package.json`, and pnpm 11.24.0 through Corepack.
 
+The Vitest 5 development harness supports Node.js 22.22.3+ within Node 22,
+24.15.0+ within Node 24, and 26+. Node 25 is no longer supported for repository
+development. Use Node 26 when moving from Node 25. This tooling requirement
+does not change the native binaries or the canonical OpenClaw plugin's runtime
+requirements.
+
 ```sh
 corepack enable
 pnpm install --frozen-lockfile
@@ -30,8 +36,10 @@ make native-verify
 ```
 
 For workflow changes, also run `actionlint`. GitHub CI runs workflow validation
-and the native build/archive checks. CodeQL covers Swift, TypeScript, Ruby,
-and Actions; it does not analyze Objective-C. Native source review and helper
+and the native build/archive checks. It also installs with strict engine
+checking and runs the harness on each supported Node.js minimum.
+CodeQL covers Swift, TypeScript, Ruby, and Actions; it does not analyze
+Objective-C. Native source review and helper
 authentication tests remain required when that boundary changes.
 
 Release archives are signed and notarized separately. Follow

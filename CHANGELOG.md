@@ -16,5 +16,9 @@ here. Published versions are listed in
 
 ### Changed
 
+- Upgrade the private development harness to Vitest 5. Repository development
+  now requires Node.js 22.22.3+ within Node 22, 24.15.0+ within Node 24, or 26+;
+  Node 25 users must upgrade to a supported version. Native binaries and the
+  canonical OpenClaw plugin's runtime requirements are unchanged.
 - Clarify first-release availability and the native/plugin ownership boundary.
 - Keep the standard MIT license text separate from third-party notices.
