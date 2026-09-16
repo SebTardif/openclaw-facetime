@@ -110,19 +110,23 @@ describe("current-version Homebrew recovery", () => {
     });
   }
 
-  it("uses the canonical version and caller with the PAT confined to dispatch", () => {
+  it("uses the canonical version and passes only the tap secret to the shared handoff", () => {
     const source = workflow.indexOf("- name: Verify protected source");
     const checkout = workflow.indexOf("- uses: actions/checkout@");
     const version = workflow.indexOf("- name: Read current version");
     const release = workflow.indexOf("- name: Verify published archive");
-    const dispatch = workflow.indexOf("- name: Update OpenClaw Homebrew tap");
+    const dispatch = workflow.indexOf("\n  homebrew:");
     assert.ok(source >= 0 && source < checkout && checkout < version && version < release && release < dispatch);
     assert.match(workflow.slice(checkout, version), /ref: \$\{\{ github\.sha \}\}/);
     assert.match(workflow.slice(checkout, version), /persist-credentials: false/);
     assert.match(workflow.slice(version, release), /scripts\/native-version\.sh/);
     assert.doesNotMatch(workflow.slice(0, dispatch), /secrets\./);
-    assert.match(workflow.slice(dispatch), /GH_TOKEN: \$\{\{ secrets\.HOMEBREW_TAP_TOKEN \}\}/);
-    assert.match(workflow.slice(dispatch), /scripts\/update-homebrew\.sh "\$TAG"/);
+    assert.match(workflow.slice(dispatch), /needs: prepare/);
+    assert.match(workflow.slice(dispatch), /uses: \.\/\.github\/workflows\/homebrew-handoff\.yml/);
+    assert.match(workflow.slice(dispatch), /native-source-sha: \$\{\{ github\.sha \}\}/);
+    assert.match(workflow.slice(dispatch), /tag: \$\{\{ needs\.prepare\.outputs\.tag \}\}/);
+    assert.match(workflow.slice(dispatch), /HOMEBREW_TAP_TOKEN: \$\{\{ secrets\.HOMEBREW_TAP_TOKEN \}\}/);
+    assert.doesNotMatch(workflow.slice(dispatch), /secrets: inherit|always\(\)|continue-on-error/);
     assert.match(workflow, /group: facetime-release\n  cancel-in-progress: false/);
     assert.match(workflow, /permissions:\n  contents: read/);
     assert.doesNotMatch(workflow, /\binputs:|contents: write|sign-and-notarize|release (create|edit|upload)/);

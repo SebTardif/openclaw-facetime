@@ -11,9 +11,11 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  homebrew:
+  prepare:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
     steps:
       - name: Verify protected source
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
@@ -47,10 +49,12 @@ jobs:
               throw new Error('Homebrew handoff requires the published current-version archive and its SHA-256 digest');
             }
             core.info(`Retrying Homebrew for ${process.env.TAG}: ${archive.digest}`);
-      - name: Update OpenClaw Homebrew tap
-        env:
-          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-          TAG: ${{ steps.version.outputs.tag }}
-        run: |
-          [[ -n "$GH_TOKEN" ]] || { echo "HOMEBREW_TAP_TOKEN is required" >&2; exit 1; }
-          scripts/update-homebrew.sh "$TAG"
+
+  homebrew:
+    needs: prepare
+    uses: ./.github/workflows/homebrew-handoff.yml
+    with:
+      native-source-sha: ${{ github.sha }}
+      tag: ${{ needs.prepare.outputs.tag }}
+    secrets:
+      HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}

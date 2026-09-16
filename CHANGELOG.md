@@ -18,6 +18,7 @@ here. Published versions are listed in
 
 - A current-version Homebrew retry workflow for recovering a failed tap handoff
   after native release publication, without rebuilding or republishing assets.
+  Release and recovery share the same tap-profile readiness checks.
 - Repository ownership, contribution templates, private security reporting
   guidance, editor defaults, and dependency update automation.
 - CodeQL analysis for Swift capture code, the TypeScript test harness, the

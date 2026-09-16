@@ -105,6 +105,12 @@ waits for the matching tap run to finish. It does not rebuild, sign, or modify
 the native release. There is no tag input: older releases require a separate
 maintainer decision. A successful retry of an already-current formula is a no-op.
 
+Both entrypoints use the same readiness and dispatch workflow. It requires the
+active tap updater and a byte-identical profile before using the tap token.
+On historical release reruns, the expected profile comes from the validated
+native commit, while the updater comes from the frozen workflow commit. Older
+tags do not need to contain the shared workflow or the corrected updater.
+
 The formula preserves both Mach-O signatures with `skip_clean` and installs all
 seven files under `opt/openclaw-facetime/libexec`, which is the plugin's native
 artifact contract. It also declares SoX for the OpenClaw host's separate
