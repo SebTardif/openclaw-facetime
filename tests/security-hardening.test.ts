@@ -96,7 +96,8 @@ describe("privileged FaceTime support boundaries", () => {
     expect(releaseWorkflow).toContain("EXPECTED_TEAM_ID: FWJYW4S8P8");
     expect(releaseWorkflow).toContain("REQUIRE_NOTARIZATION_RECEIPT=1");
     expect(releaseWorkflow).toContain("REQUIRE_NOTARIZED_GATEKEEPER=1");
-    expect(releaseWorkflow).toContain("ref: ${{ needs.validate.outputs.tag }}");
+    expect(releaseWorkflow).toContain("ref: ${{ needs.validate.outputs.target-sha }}");
+    expect(releaseWorkflow).not.toContain("ref: ${{ needs.validate.outputs.tag }}");
     expect(releaseWorkflow).toContain("HOMEBREW_TAP_TOKEN");
     expect(updateHomebrew).toContain(
       'tap_repository="${HOMEBREW_TAP_REPOSITORY:-openclaw/homebrew-tap}"',
