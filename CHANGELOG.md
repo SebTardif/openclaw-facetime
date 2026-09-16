@@ -6,6 +6,11 @@ here. Published versions are listed in
 
 ## Unreleased
 
+### Fixed
+
+- Dispatch the Homebrew updater with the tap-owned FaceTime profile alone,
+  without the conflicting artifact override that prevented formula updates.
+
 ### Added
 
 - Repository ownership, contribution templates, private security reporting
