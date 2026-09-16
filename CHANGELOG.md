@@ -6,6 +6,12 @@ here. Published versions are listed in
 
 ## Unreleased
 
+### Fixed
+
+- Bind release signing and verification to the validated commit, and recheck
+  the frozen annotated tag before release writes, publication, and handoff.
+  Same-named branches and moved tags cannot substitute release source.
+
 ### Added
 
 - Repository ownership, contribution templates, private security reporting
