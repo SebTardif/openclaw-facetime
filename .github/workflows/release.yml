@@ -130,8 +130,11 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    outputs:
+      tag-object-sha: ${{ steps.freeze.outputs.tag-object-sha }}
     steps:
       - name: Create or verify tag
+        id: freeze
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           EXPECTED_TAG_OBJECT: ${{ needs.validate.outputs.tag-object-sha }}
@@ -144,6 +147,7 @@ jobs:
               if (ref.data.object.type !== 'tag' || ref.data.object.sha !== process.env.EXPECTED_TAG_OBJECT) {
                 throw new Error('release tag changed after validation');
               }
+              core.setOutput('tag-object-sha', ref.data.object.sha);
               return;
             }
             const tag = await github.rest.git.createTag({
@@ -159,6 +163,7 @@ jobs:
               },
             });
             await github.rest.git.createRef({ ...context.repo, ref: `refs/tags/${process.env.TAG}`, sha: tag.data.sha });
+            core.setOutput('tag-object-sha', tag.data.sha);
 
   sign:
     name: 3 · Build, sign, and notarize
@@ -173,7 +178,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          ref: ${{ needs.validate.outputs.tag }}
+          ref: ${{ needs.validate.outputs.target-sha }}
       - name: Import OpenClaw Foundation signer
         id: signer
         env:
@@ -258,7 +263,7 @@ jobs:
 
   release:
     name: 4 · Draft, verify, publish, and hand off
-    needs: [validate, sign]
+    needs: [validate, tag, sign]
     runs-on: macos-15
     timeout-minutes: 30
     permissions:
@@ -268,11 +273,29 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          ref: ${{ needs.validate.outputs.tag }}
+          ref: ${{ needs.validate.outputs.target-sha }}
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: ${{ needs.sign.outputs.artifact-name }}
           path: release-assets
+      - name: Verify frozen tag before release writes
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env: &release-tag-environment
+          TAG: ${{ needs.validate.outputs.tag }}
+          TARGET_SHA: ${{ needs.validate.outputs.target-sha }}
+          TAG_OBJECT_SHA: ${{ needs.tag.outputs.tag-object-sha }}
+        # Keep the guard in the workflow so reruns of older release targets do
+        # not depend on a newly added script in the target checkout.
+        with: &verify-release-tag
+          script: |
+            const ref = await github.rest.git.getRef({ ...context.repo, ref: `tags/${process.env.TAG}` });
+            if (ref.data.object.type !== 'tag' || ref.data.object.sha !== process.env.TAG_OBJECT_SHA) {
+              throw new Error('release tag changed after it was frozen');
+            }
+            const tag = await github.rest.git.getTag({ ...context.repo, tag_sha: ref.data.object.sha });
+            if (tag.data.object.type !== 'commit' || tag.data.object.sha !== process.env.TARGET_SHA) {
+              throw new Error('release tag no longer identifies the validated source');
+            }
       - name: Create or resume release
         id: release-state
         env:
@@ -305,6 +328,10 @@ jobs:
           gh release download "$TAG" --dir bin --pattern 'openclaw-facetime-macos-arm64.zip*'
           REQUIRE_DEVELOPER_ID=1 REQUIRE_NOTARIZATION_RECEIPT=1 REQUIRE_NOTARIZED_GATEKEEPER=1 \
             EXPECTED_TEAM_ID=FWJYW4S8P8 make native-verify
+      - name: Verify frozen tag before publication and handoff
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env: *release-tag-environment
+        with: *verify-release-tag
       - name: Publish verified draft
         if: steps.release-state.outputs.publish-needed == 'true'
         env:

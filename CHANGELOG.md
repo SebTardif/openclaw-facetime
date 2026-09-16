@@ -10,6 +10,9 @@ here. Published versions are listed in
 
 - Dispatch the Homebrew updater with the tap-owned FaceTime profile alone,
   without the conflicting artifact override that prevented formula updates.
+- Bind release signing and verification to the validated commit, and recheck
+  the frozen annotated tag before release writes, publication, and handoff.
+  Same-named branches and moved tags cannot substitute release source.
 
 ### Added
 
