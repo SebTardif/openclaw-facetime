@@ -8,6 +8,8 @@ here. Published versions are listed in
 
 ### Fixed
 
+- Retain and report outbound carrier identities when native safety checks fail after dialing, so the Gateway can reconcile or cancel a call that may still be active. (#35)
+
 - Retain audio suppression through stdin/stdout loss until captured and successor carriers are confirmed stopped; retry uncertain settlement and preserve explicit safe-close behavior. Thanks @SebTardif. (#32)
 - Bind capture shutdown signals to the captured process generation so PID reuse cannot target another process, and let queued safe-close commands take precedence over stdout failure. (#32)
 - Keep outgoing-call lookup from muting, disconnecting, or adopting a non-FaceTime call while preserving owned-carrier reconciliation and explicit cancellation. Thanks @SebTardif. (#31)
