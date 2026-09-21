@@ -55,6 +55,13 @@ static NSUInteger audioActivations;
 
 static BOOL IsVerifiedFaceTimeCall(TUCall *call) { return call.verifiedFaceTime; }
 static NSDictionary *CallTransportEvidence(TUCall *call) { return @{ @"facetime": @(call.verifiedFaceTime) }; }
+static NSString *RequiredCallUUIDString(id value) {
+    if (![value isKindOfClass:[NSString class]]) {
+        return nil;
+    }
+    NSString *uuid = [value stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    return uuid.length > 0 ? uuid : nil;
+}
 static void RunSetMuted(NSDictionary *data, NSString *transaction, FixtureController *controller, FixtureHelper *self) {
 /* OPENCLAW_SET_MUTED_BODY */
 }
@@ -111,6 +118,13 @@ int main(void) {
         SendJSON(@"{\"callUUID\":\"absent\",\"muted\":true}", @"tx");
         ExpectNoAudioChanges();
         Expect([messages.lastObject[@"outcome"] isEqual:@"absent"], "absent call remains an explicit outcome");
+        for (NSString *value in @[@"null", @"1", @"[]", @"{}", @"\"\""]) {
+            Reset(YES);
+            SendJSON([NSString stringWithFormat:@"{\"callUUID\":%@,\"muted\":true}", value], @"tx");
+            ExpectNoAudioChanges();
+            Expect([messages.lastObject[@"outcome"] isEqual:@"absent"],
+                   "non-string callUUID must be absent before audio changes");
+        }
         fputs("PASS: set-muted dispatch validates JSON before call audio effects\n", stderr);
     }
     return 0;

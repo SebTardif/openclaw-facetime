@@ -102,6 +102,14 @@ static BOOL IsVerifiedFaceTimeCall(TUCall *call) {
     return [CallTransportEvidence(call)[@"kind"] isEqualToString:@"facetime"];
 }
 
+static NSString *RequiredCallUUIDString(id value) {
+    if (![value isKindOfClass:[NSString class]]) {
+        return nil;
+    }
+    NSString *uuid = [value stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    return uuid.length > 0 ? uuid : nil;
+}
+
 static BOOL ApplyOutboundSafetyMute(TUCall *call) {
     if (!IsVerifiedFaceTimeCall(call)) {
         return NO;
@@ -545,7 +553,8 @@ FACETIMEHELPER *plugin;
     DLog("FACETIMEHELPER: Authenticated action received: %{public}@", event);
 
     if ([event isEqualToString:@"answer-call"]) {
-        TUCall *call = [[TUCallCenter sharedInstance] callWithCallUUID:(data[@"callUUID"])];
+        NSString *callUUID = RequiredCallUUIDString(data[@"callUUID"]);
+        TUCall *call = callUUID != nil ? [[TUCallCenter sharedInstance] callWithCallUUID:callUUID] : nil;
 
         if (call == nil) {
             if (transaction != nil) {
@@ -605,7 +614,8 @@ FACETIMEHELPER *plugin;
             }];
         }
     } else if ([event isEqualToString:@"leave-call"]) {
-        TUCall *call = [[TUCallCenter sharedInstance] callWithCallUUID:(data[@"callUUID"])];
+        NSString *callUUID = RequiredCallUUIDString(data[@"callUUID"]);
+        TUCall *call = callUUID != nil ? [[TUCallCenter sharedInstance] callWithCallUUID:callUUID] : nil;
 
         if (call == nil) {
             if (transaction != nil) {
@@ -648,7 +658,8 @@ FACETIMEHELPER *plugin;
             }];
         }
     } else if ([event isEqualToString:@"safety-mute"]) {
-        TUCall *call = [[TUCallCenter sharedInstance] callWithCallUUID:(data[@"callUUID"])];
+        NSString *callUUID = RequiredCallUUIDString(data[@"callUUID"]);
+        TUCall *call = callUUID != nil ? [[TUCallCenter sharedInstance] callWithCallUUID:callUUID] : nil;
         if (call == nil) {
             if (transaction != nil) {
                 [controller sendMessage: @{@"transactionId": transaction, @"outcome": @"absent", @"found": @NO}];
@@ -668,7 +679,8 @@ FACETIMEHELPER *plugin;
             }];
         }
     } else if ([event isEqualToString:@"set-muted"]) {
-        TUCall *call = [[TUCallCenter sharedInstance] callWithCallUUID:(data[@"callUUID"])];
+        NSString *callUUID = RequiredCallUUIDString(data[@"callUUID"]);
+        TUCall *call = callUUID != nil ? [[TUCallCenter sharedInstance] callWithCallUUID:callUUID] : nil;
 
         if (call == nil) {
             if (transaction != nil) {
@@ -717,7 +729,8 @@ FACETIMEHELPER *plugin;
             [controller sendMessage: response];
         }
     } else if ([event isEqualToString:@"start-transmission"]) {
-        TUCall *call = [[TUCallCenter sharedInstance] callWithCallUUID:(data[@"callUUID"])];
+        NSString *callUUID = RequiredCallUUIDString(data[@"callUUID"]);
+        TUCall *call = callUUID != nil ? [[TUCallCenter sharedInstance] callWithCallUUID:callUUID] : nil;
 
         if (call == nil) {
             if (transaction != nil) {

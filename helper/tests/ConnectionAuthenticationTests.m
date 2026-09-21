@@ -71,6 +71,17 @@ int main(void) {
         NSCAssert(clientNonce.length == 64, @"helper must generate a fresh 256-bit nonce");
 
         NSString *serverNonce = [@"c" stringByPaddingToLength:64 withString:@"c" startingAtIndex:0];
+        NSDictionary *nullClientNonceHello = @{
+            @"event": @"server-hello",
+            @"client_nonce": [NSNull null],
+            @"server_nonce": serverNonce,
+            @"connection_epoch": @"epoch-1",
+            @"proof": @"unused",
+        };
+        NSCAssert(
+            [authenticator consumeServerHello:nullClientNonceHello] == nil,
+            @"JSON null client_nonce must be rejected without messaging NSNull"
+        );
         NSString *epoch = @"epoch-1";
         NSString *context = [NSString stringWithFormat:@"%@\n%@\n%@\n%@\n%@\n%@\n%@",
             bundleID, buildID, processID, processStartedAtMs, clientNonce, serverNonce, epoch];
@@ -105,6 +116,18 @@ int main(void) {
             Envelope(connectionKey, epoch, 1, @"{\"event\":\"session-ready\"}")];
         NSCAssert([ready[@"event"] isEqualToString:@"session-ready"] && authenticator.ready,
             @"the first signed server payload must establish readiness");
+
+        NSDictionary *nullEpochEnvelope = @{
+            @"connection_epoch": [NSNull null],
+            @"sequence": @2,
+            @"direction": @"server-to-helper",
+            @"payload_json": @"{}",
+            @"auth": @"unused",
+        };
+        NSCAssert(
+            [authenticator consumeIncomingEnvelope:nullEpochEnvelope] == nil,
+            @"JSON null connection_epoch must be rejected without messaging NSNull"
+        );
 
         NSDictionary *protectedEvent = [authenticator protectOutgoingPayload:@{
             @"event": @"ft-call-status-changed",
