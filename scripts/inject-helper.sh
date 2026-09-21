@@ -205,6 +205,8 @@ lldb_pid=$!
   if kill -0 "${lldb_pid}" 2>/dev/null; then
     echo "LLDB attach to ${target_app} timed out" >&2
     kill "${lldb_pid}" 2>/dev/null || true
+    # SIGTERM does not unstick a wedged ptrace attach. SIGKILL lets FaceTime run.
+    kill -9 "${lldb_pid}" 2>/dev/null || true
   fi
 ) &
 watchdog_pid=$!

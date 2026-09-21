@@ -107,5 +107,6 @@ describe("FaceTime helper injection", () => {
 
     expect(source).toContain('(void *)dlopen(\\"${dylib}\\", 2)');
     expect(source).toContain('(int *)(void *)dlsym(h, \\"OpenClawFaceTimeHelperInitialized\\")');
+    expect(source).toContain('kill -9 "${lldb_pid}"');
   });
 });
