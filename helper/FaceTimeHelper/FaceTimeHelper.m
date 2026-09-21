@@ -210,9 +210,6 @@ static TUCall *LiveOutboundCall(NSString *dialID, NSString *expectedCallUUID, NS
         BOOL matchesExpectedProxyIdentifier = expectedProxyIdentifier.length > 0 &&
             [[call uniqueProxyIdentifier] isEqualToString:expectedProxyIdentifier];
         if ([call isOutgoing] && (matchesRetainedCall || matchesExpectedUUID || matchesExpectedProxyIdentifier)) {
-            if (dialID.length > 0) {
-                OutboundCallsByDialID[dialID] = call;
-            }
             return call;
         }
     }
@@ -897,6 +894,7 @@ FACETIMEHELPER *plugin;
                 }
                 return;
             }
+            OutboundCallsByDialID[dialID] = stableCall;
             if (!ApplyOutboundSafetyMute(stableCall)) {
                 [[TUCallCenter sharedInstance] disconnectCall:stableCall];
                 if (transaction != nil) {
@@ -935,12 +933,20 @@ FACETIMEHELPER *plugin;
         NSString *expectedProxyIdentifier = [data[@"proxyIdentifier"] isKindOfClass:[NSString class]]
             ? [data[@"proxyIdentifier"] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]]
             : @"";
-        BOOL retainedDial = dialID.length > 0 && OutboundCallsByDialID[dialID] != nil;
         TUCall *matchedCall = LiveOutboundCall(dialID, expectedCallUUID, expectedProxyIdentifier);
-        if (matchedCall != nil && !ApplyOutboundSafetyMute(matchedCall)) {
-            [[TUCallCenter sharedInstance] disconnectCall:matchedCall];
+        if (matchedCall != nil && !IsVerifiedFaceTimeCall(matchedCall)) {
             matchedCall = nil;
         }
+        if (matchedCall != nil) {
+            if (dialID.length > 0) {
+                OutboundCallsByDialID[dialID] = matchedCall;
+            }
+            if (!ApplyOutboundSafetyMute(matchedCall)) {
+                [[TUCallCenter sharedInstance] disconnectCall:matchedCall];
+                matchedCall = nil;
+            }
+        }
+        BOOL retainedDial = dialID.length > 0 && OutboundCallsByDialID[dialID] != nil;
         if (transaction != nil) {
             [controller sendMessage: @{
                 @"transactionId": transaction,
@@ -960,12 +966,14 @@ FACETIMEHELPER *plugin;
             : @"";
         BOOL retainedDial = dialID.length > 0 && OutboundCallsByDialID[dialID] != nil;
         if (retainedDial) {
-            // Arm first so LiveOutboundCall keeps the helper-owned mapping if
-            // CallServices has not published the corresponding call yet.
+            // Preserve cancellation while CallServices has not published the call.
             ArmOutboundCancellation(dialID);
         }
         TUCall *matchedCall = LiveOutboundCall(dialID, expectedCallUUID, expectedProxyIdentifier);
         if (matchedCall != nil) {
+            if (dialID.length > 0) {
+                OutboundCallsByDialID[dialID] = matchedCall;
+            }
             if (!retainedDial && dialID.length > 0) {
                 ArmOutboundCancellation(dialID);
             }

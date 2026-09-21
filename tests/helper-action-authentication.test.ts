@@ -73,4 +73,45 @@ describe("FaceTime helper native contracts", () => {
       );
     },
   );
+  it(
+    "keeps outgoing lookup off non-FaceTime audio and retained ownership",
+    { timeout: 20_000 },
+    () => {
+      const helper = readFileSync("helper/FaceTimeHelper/FaceTimeHelper.m", "utf8");
+      const between = (startMarker: string, endMarker: string) => {
+        const start = helper.indexOf(startMarker);
+        const end = helper.indexOf(endMarker, start + startMarker.length);
+        expect(start).toBeGreaterThan(0);
+        expect(end).toBeGreaterThan(start);
+        return helper.slice(start, end);
+      };
+      const branch = (name: string, next: string) => {
+        const content = between(`} else if ([event isEqualToString:@"${name}"]) {`, next);
+        return content.slice(content.indexOf("\n") + 1);
+      };
+      const fixture = readFileSync("helper/tests/FindOutgoingDispatchTests.m", "utf8");
+      runNativeCheck(
+        [],
+        fixture
+          .replace(
+            "/* OPENCLAW_OUTBOUND_LOOKUP */",
+            between(
+              "static BOOL CallsShareCarrierIdentity(",
+              "static void ReleaseRetainedOutboundCall(",
+            ),
+          )
+          .replace(
+            "/* OPENCLAW_FIND_OUTGOING_BODY */",
+            branch(
+              "find-outgoing-call",
+              '    } else if ([event isEqualToString:@"cancel-outgoing-call"])',
+            ),
+          )
+          .replace(
+            "/* OPENCLAW_CANCEL_OUTGOING_BODY */",
+            branch("cancel-outgoing-call", "\n    }\n}\n\n@end"),
+          ),
+      );
+    },
+  );
 });
