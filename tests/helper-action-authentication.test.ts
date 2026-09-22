@@ -69,7 +69,15 @@ describe("FaceTime helper native contracts", () => {
       const fixture = readFileSync("helper/tests/SetMutedDispatchTests.m", "utf8");
       runNativeCheck(
         [],
-        fixture.replace("/* OPENCLAW_SET_MUTED_BODY */", helper.slice(start, end)),
+        fixture
+          .replace(
+            "/* OPENCLAW_REQUIRED_CALL_UUID */",
+            helper.slice(
+              helper.indexOf("static NSString *RequiredCallUUIDString("),
+              helper.indexOf("static BOOL ApplyOutboundSafetyMute("),
+            ),
+          )
+          .replace("/* OPENCLAW_SET_MUTED_BODY */", helper.slice(start, end)),
       );
     },
   );

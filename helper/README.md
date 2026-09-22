@@ -23,3 +23,8 @@ native development commands.
 The OpenClaw helper modifications are distributed from this repository under
 the MIT license. Incorporated and adapted BlueBubbles portions retain the
 license and notice in `../THIRD_PARTY_NOTICES.md`.
+
+Authenticated call-control commands reject missing, empty, or non-string
+`callUUID` values with the existing `absent` outcome before call lookup.
+Malformed handshake and envelope string fields fail authentication without
+invoking string methods on untrusted JSON types.

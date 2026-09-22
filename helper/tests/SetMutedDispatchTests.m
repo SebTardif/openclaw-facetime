@@ -26,6 +26,7 @@
 static TUCall *currentCall;
 static NSMutableArray *messages;
 static NSUInteger audioActivations;
+static NSUInteger callLookups;
 
 @interface TUCallCenter : NSObject
 + (instancetype)sharedInstance;
@@ -33,7 +34,7 @@ static NSUInteger audioActivations;
 @end
 @implementation TUCallCenter
 + (instancetype)sharedInstance { static id center; if (!center) center = [self new]; return center; }
-- (TUCall *)callWithCallUUID:(NSString *)uuid { return [uuid isEqual:@"call-1"] ? currentCall : nil; }
+- (TUCall *)callWithCallUUID:(NSString *)uuid { callLookups++; return [uuid isEqual:@"call-1"] ? currentCall : nil; }
 @end
 
 @interface FixtureController : NSObject
@@ -55,13 +56,7 @@ static NSUInteger audioActivations;
 
 static BOOL IsVerifiedFaceTimeCall(TUCall *call) { return call.verifiedFaceTime; }
 static NSDictionary *CallTransportEvidence(TUCall *call) { return @{ @"facetime": @(call.verifiedFaceTime) }; }
-static NSString *RequiredCallUUIDString(id value) {
-    if (![value isKindOfClass:[NSString class]]) {
-        return nil;
-    }
-    NSString *uuid = [value stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-    return uuid.length > 0 ? uuid : nil;
-}
+/* OPENCLAW_REQUIRED_CALL_UUID */
 static void RunSetMuted(NSDictionary *data, NSString *transaction, FixtureController *controller, FixtureHelper *self) {
 /* OPENCLAW_SET_MUTED_BODY */
 }
@@ -73,6 +68,7 @@ static void Reset(BOOL verified) {
     currentCall.verifiedFaceTime = verified;
     messages = [NSMutableArray array];
     audioActivations = 0;
+    callLookups = 0;
 }
 static void SendJSON(NSString *json, NSString *transaction) {
     NSDictionary *data = [NSJSONSerialization JSONObjectWithData:[json dataUsingEncoding:NSUTF8StringEncoding]
@@ -124,6 +120,7 @@ int main(void) {
             ExpectNoAudioChanges();
             Expect([messages.lastObject[@"outcome"] isEqual:@"absent"],
                    "non-string callUUID must be absent before audio changes");
+            Expect(callLookups == 0, "invalid callUUID must never reach TelephonyUtilities");
         }
         fputs("PASS: set-muted dispatch validates JSON before call audio effects\n", stderr);
     }
