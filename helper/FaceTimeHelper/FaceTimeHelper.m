@@ -248,7 +248,6 @@ FACETIMEHELPER *plugin;
 
 @implementation FACETIMEHELPER
 
-// FACETIMEHELPER is a singleton
 + (instancetype)sharedInstance {
     static FACETIMEHELPER *plugin = nil;
     @synchronized(self) {
@@ -259,15 +258,12 @@ FACETIMEHELPER *plugin;
     return plugin;
 }
 
-// Called when macforge initializes the plugin
 + (void)load {
-    // Create the singleton
     plugin = [FACETIMEHELPER sharedInstance];
     // Store ownership on a host object whose lifetime spans helper reinjection.
     // Static dictionaries alone would orphan provisional outbound calls.
     RestoreOutboundState();
 
-    // Get OS version for debugging purposes
     NSUInteger major = [[NSProcessInfo processInfo] operatingSystemVersion].majorVersion;
     NSUInteger minor = [[NSProcessInfo processInfo] operatingSystemVersion].minorVersion;
     DLog("FACETIMEHELPER: %{public}@ loaded into %{public}@ on macOS %ld.%ld", [self className], [[NSBundle mainBundle] bundleIdentifier], (long)major, (long)minor);
@@ -324,7 +320,6 @@ FACETIMEHELPER *plugin;
 }
 
 -(void) initializeNetworkController {
-    // Get the network controller
     NetworkController *controller = [NetworkController sharedInstance];
     controller.messageReceivedBlock =  ^(NetworkController *controller, NSString *data) {
         [self handleMessage:controller message: data];
@@ -521,7 +516,6 @@ FACETIMEHELPER *plugin;
     }
 }
 
-// Run when receiving a new message from the tcp socket
 -(void) handleMessage: (NetworkController*)controller  message:(NSString *)message {
     NSError *error;
     NSData *jsonData = [message dataUsingEncoding:NSUTF8StringEncoding];
