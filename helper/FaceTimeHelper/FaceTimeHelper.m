@@ -953,6 +953,16 @@ FACETIMEHELPER *plugin;
                 }
             } @catch (NSException *exception) {
                 DLog("FACETIMEHELPER: outbound acknowledgement failed: %{public}@", exception.reason);
+                if (transaction != nil) {
+                    [controller sendMessage: @{
+                        @"transactionId": transaction,
+                        @"error": exception.reason ?: @"FaceTime outbound acknowledgement failed",
+                        @"ambiguous": @YES,
+                        @"dial_id": dialID,
+                        @"call_uuid": [stableCall callUUID] ?: [NSNull null],
+                        @"proxy_identifier": [stableCall uniqueProxyIdentifier] ?: [NSNull null],
+                    }];
+                }
             }
         });
     } else if ([event isEqualToString:@"find-outgoing-call"]) {

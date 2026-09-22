@@ -14,6 +14,8 @@ here. Published versions are listed in
 
 - Reply with a transaction error when an authenticated helper action is unknown, instead of leaving the plugin waiting. Thanks @SebTardif. (#45)
 
+- Return an ambiguous transaction error with the retained carrier identity when outbound acknowledgement raises, so the Gateway can reconcile a live muted call. Thanks @SebTardif. (#46)
+
 ## 0.1.2 - 2026-09-21
 
 ### Fixed

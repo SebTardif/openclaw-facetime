@@ -34,6 +34,7 @@ static NSUInteger disconnectedCalls;
 static NSMutableDictionary *OutboundCallsByDialID;
 static dispatch_block_t delayed;
 static NSMutableArray *messages;
+static BOOL emitThrows;
 
 @interface TUCallCenter : NSObject
 + (instancetype)sharedInstance;
@@ -60,7 +61,11 @@ static NSMutableArray *messages;
 - (void)emitCallStatus:(TUCall *)call;
 @end
 @implementation FixtureHelper
-- (void)emitCallStatus:(TUCall *)call {}
+- (void)emitCallStatus:(TUCall *)call {
+    if (emitThrows) {
+        [NSException raise:NSInternalInconsistencyException format:@"outbound acknowledgement failed"];
+    }
+}
 @end
 
 static BOOL ApplyOutboundSafetyMute(TUCall *call) { muteChecks += 1; return muteChecks != muteFailureIndex; }
@@ -109,6 +114,27 @@ int main(void) {
                    "failed call retains the current carrier for reconciliation");
             Expect(disconnectedCalls == 1, "unsafe carrier receives a disconnect request");
         }
+        createdCall = Call(@"initial-call");
+        stableCallFixture = Call(@"stable-call");
+        muteChecks = 0;
+        muteFailureIndex = 0;
+        disconnectedCalls = 0;
+        emitThrows = YES;
+        OutboundCallsByDialID = [NSMutableDictionary dictionary];
+        messages = [NSMutableArray array];
+        delayed = nil;
+        RunStartCall(@{@"handle": @"owner@example.com", @"mode": @"audio", @"dialID": @"approved-dial"},
+                     @"tx", [FixtureController new], [FixtureHelper new]);
+        if (delayed) delayed();
+        Expect([messages.firstObject[@"event"] isEqual:@"ft-outbound-call-identified"],
+               "created carrier identity must be published before acknowledgement");
+        NSDictionary *ackFailure = messages.lastObject;
+        Expect([ackFailure[@"error"] isEqual:@"outbound acknowledgement failed"],
+               "acknowledgement exception must return a transaction error");
+        Expect([ackFailure[@"ambiguous"] isEqual:@YES], "acknowledgement failure remains ambiguous");
+        Expect([ackFailure[@"dial_id"] isEqual:@"approved-dial"], "acknowledgement failure retains the dial");
+        Expect([ackFailure[@"call_uuid"] isEqual:@"stable-call"], "acknowledgement failure retains Apple's UUID");
+        Expect(disconnectedCalls == 0, "acknowledgement failure must not disconnect a muted ringing call");
         fprintf(stderr, "PASS: initial and delayed native safety failures preserve reconciliation identity\n");
     }
     return 0;
