@@ -1021,6 +1021,13 @@ FACETIMEHELPER *plugin;
                 @"proxy_identifier": [matchedCall uniqueProxyIdentifier] ?: [NSNull null],
             }];
         }
+    } else {
+        if (transaction != nil) {
+            [controller sendMessage: @{
+                @"transactionId": transaction,
+                @"error": @"Unknown action",
+            }];
+        }
     }
 }
 
