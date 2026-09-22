@@ -240,6 +240,8 @@ static void ReleaseRetainedOutboundCall(TUCall *call) {
 
 @interface FACETIMEHELPER : NSObject
 + (instancetype)sharedInstance;
+- (void)openclaw_stopHelperPolling;
+- (void)startCallStatusPolling;
 @end
 
 FACETIMEHELPER *plugin;
@@ -297,17 +299,37 @@ FACETIMEHELPER *plugin;
     }
 }
 
-// Private method to initialize all the things required by the plugin to communicate with the main
-// server over a tcp socket
+-(void)openclaw_stopHelperPolling {
+    objc_setAssociatedObject(self, @selector(openclaw_stopHelperPolling), @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
+
+-(void)startCallStatusPolling {
+    if (![NSThread isMainThread]) {
+        dispatch_async(dispatch_get_main_queue(), ^{ [self startCallStatusPolling]; });
+        return;
+    }
+    TUCallCenter *owner = [TUCallCenter sharedInstance];
+    // Selector identity is shared across independently loaded helper images.
+    SEL key = @selector(openclaw_stopHelperPolling);
+    id previous = objc_getAssociatedObject(owner, key);
+    if (previous == self) {
+        return;
+    }
+    [previous openclaw_stopHelperPolling];
+    objc_setAssociatedObject(owner, key, self, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(callStatusChanged:) name:@"TUCallCenterVideoCallStatusChangedNotification" object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(callStatusChanged:) name:@"TUCallCenterCallStatusChangedNotification" object:nil];
+    [self pollCallStatuses];
+}
+
 -(void) initializeNetworkController {
     // Get the network controller
     NetworkController *controller = [NetworkController sharedInstance];
     controller.messageReceivedBlock =  ^(NetworkController *controller, NSString *data) {
         [self handleMessage:controller message: data];
     };
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(callStatusChanged:) name:@"TUCallCenterVideoCallStatusChangedNotification" object:nil];
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(callStatusChanged:) name:@"TUCallCenterCallStatusChangedNotification" object:nil];
-    [self pollCallStatuses];
+    [self startCallStatusPolling];
     controller.connectionReadyBlock = ^(NetworkController *readyController) {
         NSString *bundleIdentifier = [[NSBundle mainBundle] bundleIdentifier] ?: @"";
         NSDictionary *hello = [ConnectionAuthenticator
@@ -469,6 +491,9 @@ FACETIMEHELPER *plugin;
 }
 
 -(void) pollCallStatuses {
+    if ([objc_getAssociatedObject(self, @selector(openclaw_stopHelperPolling)) boolValue]) {
+        return;
+    }
     NSMutableDictionary *callsByUUID = [NSMutableDictionary dictionary];
     for (id call in AllKnownCalls()) {
         if ([call respondsToSelector:@selector(callUUID)] && [call callUUID] != nil) {
