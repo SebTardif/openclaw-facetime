@@ -12,6 +12,8 @@ here. Published versions are listed in
 
 - Bound the injector wait by terminating an LLDB process that ignores SIGTERM after the attach deadline. Thanks @SebTardif. (#44)
 
+- Reply with a transaction error when an authenticated helper action is unknown, instead of leaving the plugin waiting. Thanks @SebTardif. (#45)
+
 ## 0.1.2 - 2026-09-21
 
 ### Fixed

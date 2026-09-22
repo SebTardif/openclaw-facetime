@@ -117,7 +117,7 @@ describe("FaceTime helper native contracts", () => {
           )
           .replace(
             "/* OPENCLAW_CANCEL_OUTGOING_BODY */",
-            branch("cancel-outgoing-call", "\n    }\n}\n\n@end"),
+            branch("cancel-outgoing-call", "\n    } else {"),
           ),
       );
     },
@@ -142,6 +142,23 @@ describe("FaceTime helper native contracts", () => {
       runNativeCheck(
         [],
         fixture.replace("/* OPENCLAW_START_CALL_BODY */", helper.slice(start, end)),
+      );
+    },
+  );
+  it(
+    "replies when an authenticated action is unknown",
+    { timeout: 20_000 },
+    () => {
+      const helper = readFileSync("helper/FaceTimeHelper/FaceTimeHelper.m", "utf8");
+      const elseStart = helper.lastIndexOf("\n    } else {") + 1;
+      const elseBodyStart = helper.indexOf("\n", elseStart) + 1;
+      const elseEnd = helper.indexOf("\n    }\n}", elseStart);
+      expect(elseStart).toBeGreaterThan(0);
+      expect(elseEnd).toBeGreaterThan(elseBodyStart);
+      const fixture = readFileSync("helper/tests/UnknownActionDispatchTests.m", "utf8");
+      runNativeCheck(
+        [],
+        fixture.replace("/* OPENCLAW_UNKNOWN_ACTION_ELSE */", helper.slice(elseBodyStart, elseEnd)),
       );
     },
   );

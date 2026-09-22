@@ -28,3 +28,6 @@ Authenticated call-control commands reject missing, empty, or non-string
 `callUUID` values with the existing `absent` outcome before call lookup.
 Malformed handshake and envelope string fields fail authentication without
 invoking string methods on untrusted JSON types.
+
+Unknown authenticated action names receive an `Unknown action` transaction
+error, allowing callers to detect plugin/helper version skew immediately.
