@@ -115,6 +115,10 @@ static BOOL OpenClawConnectionHasExactKeys(NSDictionary *dictionary, NSArray<NSS
         [[NSSet setWithArray:dictionary.allKeys] isEqualToSet:[NSSet setWithArray:keys]];
 }
 
+static NSString *OpenClawConnectionStringValue(id value) {
+    return [value isKindOfClass:[NSString class]] ? value : nil;
+}
+
 static NSString *OpenClawConnectionRandomNonce(void) {
     unsigned char bytes[32];
     if (SecRandomCopyBytes(kSecRandomDefault, sizeof(bytes), bytes) != errSecSuccess) {
@@ -207,17 +211,16 @@ static NSString *OpenClawConnectionRandomNonce(void) {
 - (NSDictionary *)consumeServerHello:(NSDictionary *)message {
     @synchronized(self) {
         NSArray *keys = @[@"event", @"client_nonce", @"server_nonce", @"connection_epoch", @"proof"];
+        NSString *event = OpenClawConnectionStringValue(message[@"event"]);
+        NSString *clientNonce = OpenClawConnectionStringValue(message[@"client_nonce"]);
         if (!OpenClawConnectionHasExactKeys(message, keys) ||
-            ![message[@"event"] isEqualToString:@"server-hello"] || _clientNonce.length == 0 ||
-            ![message[@"client_nonce"] isEqualToString:_clientNonce]) {
+            ![event isEqualToString:@"server-hello"] || _clientNonce.length == 0 ||
+            ![clientNonce isEqualToString:_clientNonce]) {
             return nil;
         }
-        NSString *serverNonce = [message[@"server_nonce"] isKindOfClass:[NSString class]]
-            ? message[@"server_nonce"] : @"";
-        NSString *epoch = [message[@"connection_epoch"] isKindOfClass:[NSString class]]
-            ? message[@"connection_epoch"] : @"";
-        NSString *receivedProof = [message[@"proof"] isKindOfClass:[NSString class]]
-            ? message[@"proof"] : @"";
+        NSString *serverNonce = OpenClawConnectionStringValue(message[@"server_nonce"]) ?: @"";
+        NSString *epoch = OpenClawConnectionStringValue(message[@"connection_epoch"]) ?: @"";
+        NSString *receivedProof = OpenClawConnectionStringValue(message[@"proof"]) ?: @"";
         if (serverNonce.length == 0 || epoch.length == 0) {
             return nil;
         }
@@ -250,25 +253,27 @@ static NSString *OpenClawConnectionRandomNonce(void) {
 - (NSDictionary *)consumeIncomingEnvelope:(NSDictionary *)envelope {
     @synchronized(self) {
         NSArray *keys = @[@"connection_epoch", @"sequence", @"direction", @"payload_json", @"auth"];
+        NSString *epoch = OpenClawConnectionStringValue(envelope[@"connection_epoch"]);
+        NSString *direction = OpenClawConnectionStringValue(envelope[@"direction"]);
+        NSString *payloadJSON = OpenClawConnectionStringValue(envelope[@"payload_json"]);
+        NSString *auth = OpenClawConnectionStringValue(envelope[@"auth"]);
         if (!OpenClawConnectionHasExactKeys(envelope, keys) || _connectionKey.length == 0 ||
-            ![envelope[@"connection_epoch"] isEqualToString:_connectionEpoch] ||
-            ![envelope[@"direction"] isEqualToString:@"server-to-helper"] ||
+            ![epoch isEqualToString:_connectionEpoch] ||
+            ![direction isEqualToString:@"server-to-helper"] ||
             ![envelope[@"sequence"] isKindOfClass:[NSNumber class]] ||
-            ![envelope[@"payload_json"] isKindOfClass:[NSString class]] ||
-            ![envelope[@"auth"] isKindOfClass:[NSString class]]) {
+            payloadJSON == nil || auth == nil) {
             return nil;
         }
         NSUInteger sequence = [envelope[@"sequence"] unsignedIntegerValue];
         if (sequence != _incomingSequence + 1) {
             return nil;
         }
-        NSString *payloadJSON = envelope[@"payload_json"];
         NSString *expectedAuth = OpenClawConnectionHMAC(
             _connectionKey,
             [NSString stringWithFormat:@"message\nserver-to-helper\n%@\n%lu\n%@",
                 _connectionEpoch, (unsigned long)sequence, payloadJSON]
         );
-        if (!OpenClawConnectionStringsEqual(envelope[@"auth"], expectedAuth)) {
+        if (!OpenClawConnectionStringsEqual(auth, expectedAuth)) {
             return nil;
         }
         NSError *error;
@@ -281,7 +286,7 @@ static NSString *OpenClawConnectionRandomNonce(void) {
         _incomingSequence = sequence;
         if (!_ready) {
             if (sequence != 1 || !OpenClawConnectionHasExactKeys(payload, @[@"event"]) ||
-                ![payload[@"event"] isEqualToString:@"session-ready"]) {
+                ![OpenClawConnectionStringValue(payload[@"event"]) isEqualToString:@"session-ready"]) {
                 return nil;
             }
             _ready = YES;
