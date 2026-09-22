@@ -108,4 +108,40 @@ describe("FaceTime helper injection", () => {
     expect(source).toContain('(void *)dlopen(\\"${dylib}\\", 2)');
     expect(source).toContain('(int *)(void *)dlsym(h, \\"OpenClawFaceTimeHelperInitialized\\")');
   });
+  it("bounds the wait when the debugger ignores SIGTERM", async () => {
+    const source = await readFile(injectHelperScript, "utf8");
+    const start = source.indexOf("lldb_pid=$!");
+    const end = source.indexOf('if [[ "${lldb_status}" -ne 0 ]]', start);
+    expect(start).toBeGreaterThan(0);
+    expect(end).toBeGreaterThan(start);
+    // Exercise the production watchdog and wait against a non-cooperative child.
+    // The pipe handshake ensures SIGTERM is ignored before the timeout starts.
+    const result = spawnSync("python3", ["-c", String.raw`
+import os, signal, subprocess, sys
+read_fd, write_fd = os.pipe()
+child = "import os,signal,time; signal.signal(signal.SIGTERM,signal.SIG_IGN); os.write(%d,b'1'); time.sleep(30)" % write_fd
+script = '"$1" -c "$2" &\nIFS= read -r -n 1 -u "$3"\n' + sys.argv[1] + '\nexit "$lldb_status"'
+process = subprocess.Popen(["/bin/bash", "-c", script, "watchdog-test", sys.executable, child, str(read_fd)],
+    pass_fds=(read_fd, write_fd), env={**os.environ, "FACETIME_HELPER_ATTACH_TIMEOUT_SECONDS": "0.1"},
+    start_new_session=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+os.close(read_fd)
+os.close(write_fd)
+try:
+    out, err = process.communicate(timeout=3)
+    sys.stdout.write(out)
+    sys.stderr.write(err)
+    sys.exit(process.returncode)
+except subprocess.TimeoutExpired:
+    sys.stderr.write("watchdog left debugger alive\n")
+    sys.exit(124)
+finally:
+    try: os.killpg(process.pid, signal.SIGKILL)
+    except ProcessLookupError: pass
+`, 'target_app=Fixture\n' + source.slice(start, end)], { encoding: "utf8", timeout: 5000 });
+    expect(result.error).toBeUndefined();
+    expect(result.status).toBe(137);
+    expect(result.stderr).toContain("LLDB attach to Fixture timed out");
+    expect(result.stderr).not.toContain("watchdog left debugger alive");
+  });
+
 });
