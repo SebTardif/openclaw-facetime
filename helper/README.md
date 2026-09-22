@@ -31,3 +31,8 @@ invoking string methods on untrusted JSON types.
 
 Unknown authenticated action names receive an `Unknown action` transaction
 error, allowing callers to detect plugin/helper version skew immediately.
+
+If outbound acknowledgement raises after a call is safely muted, the reply
+retains the dial and carrier identity and marks the result ambiguous so the
+Gateway can reconcile it. The acknowledgement failure does not hang up that
+safely muted call.
