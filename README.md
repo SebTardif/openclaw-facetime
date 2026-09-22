@@ -91,6 +91,9 @@ pnpm inject:helper
 pnpm inject:helper:phone
 ```
 
+The injector forcibly terminates an unresponsive debugger after its attach
+deadline instead of waiting indefinitely.
+
 The injection commands are development tools. They require the manual SIP and
 Developer Tools preparation documented in the recovery guide. They never
 change SIP, TCC, or developer-tools policy themselves.

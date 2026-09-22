@@ -204,8 +204,7 @@ lldb_pid=$!
   sleep "${FACETIME_HELPER_ATTACH_TIMEOUT_SECONDS:-90}"
   if kill -0 "${lldb_pid}" 2>/dev/null; then
     echo "LLDB attach to ${target_app} timed out" >&2
-    kill "${lldb_pid}" 2>/dev/null || true
-    # SIGTERM does not unstick a wedged ptrace attach. SIGKILL lets FaceTime run.
+    # Bound wait even when the debugger ignores SIGTERM.
     kill -9 "${lldb_pid}" 2>/dev/null || true
   fi
 ) &

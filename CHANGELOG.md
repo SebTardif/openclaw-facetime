@@ -9,7 +9,8 @@ here. Published versions are listed in
 ### Fixed
 
 - Reject non-string `callUUID` values on authenticated call-control actions before asking TelephonyUtilities for a call, so JSON null cannot crash FaceTime. Handshake and envelope string fields are class-checked the same way before `isEqualToString:`. Thanks @SebTardif. (#43)
-- SIGKILL a wedged LLDB FaceTime attach after the injector timeout so the target is not left stopped.
+
+- Bound the injector wait by terminating an LLDB process that ignores SIGTERM after the attach deadline. Thanks @SebTardif. (#44)
 
 ## 0.1.2 - 2026-09-21
 
