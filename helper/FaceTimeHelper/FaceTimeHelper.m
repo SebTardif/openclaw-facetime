@@ -296,7 +296,7 @@ FACETIMEHELPER *plugin;
 }
 
 -(void)openclaw_stopHelperPolling {
-    objc_setAssociatedObject(self, @selector(openclaw_stopHelperPolling), @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    objc_setAssociatedObject(self, @selector(pollCallStatuses), nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
@@ -309,10 +309,11 @@ FACETIMEHELPER *plugin;
     // Selector identity is shared across independently loaded helper images.
     SEL key = @selector(openclaw_stopHelperPolling);
     id previous = objc_getAssociatedObject(owner, key);
-    if (previous == self) {
+    if (previous == self && objc_getAssociatedObject(self, @selector(pollCallStatuses)) != nil) {
         return;
     }
     [previous openclaw_stopHelperPolling];
+    objc_setAssociatedObject(self, @selector(pollCallStatuses), [NSObject new], OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     objc_setAssociatedObject(owner, key, self, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(callStatusChanged:) name:@"TUCallCenterVideoCallStatusChangedNotification" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(callStatusChanged:) name:@"TUCallCenterCallStatusChangedNotification" object:nil];
@@ -486,7 +487,8 @@ FACETIMEHELPER *plugin;
 }
 
 -(void) pollCallStatuses {
-    if ([objc_getAssociatedObject(self, @selector(openclaw_stopHelperPolling)) boolValue]) {
+    id generation = objc_getAssociatedObject(self, @selector(pollCallStatuses));
+    if (generation == nil) {
         return;
     }
     NSMutableDictionary *callsByUUID = [NSMutableDictionary dictionary];
@@ -499,7 +501,10 @@ FACETIMEHELPER *plugin;
         [self emitCallStatus:callsByUUID[callUUID]];
     }
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^(void){
-        [self pollCallStatuses];
+        // Restarting this instance must not revive a replaced callback.
+        if (objc_getAssociatedObject(self, @selector(pollCallStatuses)) == generation) {
+            [self pollCallStatuses];
+        }
     });
 }
 

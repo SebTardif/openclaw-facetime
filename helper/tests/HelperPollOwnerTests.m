@@ -73,6 +73,16 @@ int main(int argc, const char **argv) {
         [current openclaw_stopHelperPolling];
         AdvancePoll();
         Expect(current.polls == currentPolls, "explicit stop must cancel the remaining poll chain");
+        [previous startCallStatusPolling];
+        Expect(previous.polls == previousPolls + 1, "a stopped helper may reclaim ownership");
+        [previous openclaw_stopHelperPolling];
+        [previous startCallStatusPolling];
+        NSUInteger restartedPolls = previous.polls;
+        AdvancePoll();
+        Expect(previous.polls == restartedPolls + 1, "restart must not revive the previous generation's queued callback");
+        Notify();
+        Expect(previous.notifications == 4 && current.notifications == 4, "reclaimed ownership must restore exactly one observer set");
+        [previous openclaw_stopHelperPolling];
         fputs("PASS: independent helper images transfer polling and observer ownership\n", stderr);
     }
     return 0;
